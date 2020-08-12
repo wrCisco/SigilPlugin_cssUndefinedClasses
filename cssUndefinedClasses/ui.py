@@ -39,6 +39,7 @@ class MainWindow(tk.Tk):
         self.style = ttk.Style()
         self.title("cssUndefinedClasses")
         self.set_geometry()
+        self.set_fonts()
         self.set_styles()
 
         self.rowconfigure(0, weight=1)
@@ -48,7 +49,7 @@ class MainWindow(tk.Tk):
         self.mainframe.grid(row=0, column=0, sticky="nsew")
         self.mainframe.bind(
             '<Configure>',
-            lambda event: self.update_wraplength(event, self.style)
+            lambda event: self.update_full_wraplength(event)
         )
 
         self.top_label_text = tk.StringVar()
@@ -62,58 +63,58 @@ class MainWindow(tk.Tk):
         self.panedwindow = ttk.PanedWindow(self.mainframe, orient=tk.HORIZONTAL)
         self.panedwindow.grid(row=1, column=0, sticky='nsew')
 
-        self.classes_frame = ttk.Frame(self.panedwindow, style='Paned.TFrame', padding=4)
-        self.ids_frame = ttk.Frame(self.panedwindow, style='Paned.TFrame', padding=4)
+        self.classes_frame = ttk.Frame(self.panedwindow, style='Paned.TFrame', padding=0)
+        self.ids_frame = ttk.Frame(self.panedwindow, style='Paned.TFrame', padding=0)
         self.panedwindow.add(self.classes_frame, weight=1)
         self.panedwindow.add(self.ids_frame, weight=1)
-
-        self.classes_label_text = tk.StringVar()
-        self.classes_label_text.set('')
-        self.classes_label = ttk.Label(
-            self.classes_frame,
-            textvariable=self.classes_label_text,
-            style='Paned.TLabel'
+        self.classes_frame.bind(
+            '<Configure>',
+            lambda event: self.update_paned_wraplength(event, 'Classes')
         )
-        self.classes_label.grid(row=0, column=0, sticky='nsw')
+        self.ids_frame.bind(
+            '<Configure>',
+            lambda event: self.update_paned_wraplength(event, 'Ids')
+        )
+
         self.scroll_classes_list = ttk.Scrollbar(self.classes_frame, orient=tk.VERTICAL)
         self.classes_text = tk.Text(
             self.classes_frame,
             yscrollcommand=self.scroll_classes_list.set,
             borderwidth=0,
-            padx=4, pady=4,
-            relief=tk.FLAT
+            padx=0, pady=0,
+            relief=tk.FLAT,
+            font=self.text_heading_font
         )
-        self.scroll_classes_list.grid(row=1, column=1, sticky='nsew')
+        self.classes_text.tag_config(
+            'heading',
+            background='#EEE', spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
+        )
+        self.scroll_classes_list.grid(row=0, column=1, sticky='nsew')
         self.scroll_classes_list['command'] = self.classes_text.yview
-        self.classes_text.grid(row=1, column=0, sticky='nsew')
-        self.classes_frame.rowconfigure(0, weight=0)
-        self.classes_frame.rowconfigure(1, weight=1)
+        self.classes_text.grid(row=0, column=0, sticky='nsew')
+        self.classes_frame.rowconfigure(0, weight=1)
         self.classes_frame.columnconfigure(0, weight=1)
         self.classes_frame.columnconfigure(1, weight=0)
         self.bind_to_mousewheel(self.classes_text)
         self.classes_text.config(state=tk.DISABLED)
 
-        self.ids_label_text = tk.StringVar()
-        self.ids_label_text.set('')
-        self.ids_label = ttk.Label(
-            self.ids_frame,
-            textvariable=self.ids_label_text,
-            style='Paned.TLabel'
-        )
-        self.ids_label.grid(row=0, column=0, sticky='nsw')
         self.scroll_ids_list = ttk.Scrollbar(self.ids_frame, orient=tk.VERTICAL)
         self.ids_text = tk.Text(
             self.ids_frame,
             yscrollcommand=self.scroll_ids_list.set,
             borderwidth=0,
-            padx=4, pady=4,
-            relief=tk.FLAT
+            padx=0, pady=0,
+            relief=tk.FLAT,
+            font=self.text_heading_font
         )
-        self.scroll_ids_list.grid(row=1, column=1, sticky='nsew')
+        self.ids_text.tag_config(
+            'heading',
+            background='#EEE', spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
+        )
+        self.scroll_ids_list.grid(row=0, column=1, sticky='nsew')
         self.scroll_ids_list['command'] = self.ids_text.yview
-        self.ids_text.grid(row=1, column=0, sticky='nsew')
-        self.ids_frame.rowconfigure(0, weight=0)
-        self.ids_frame.rowconfigure(1, weight=1)
+        self.ids_text.grid(row=0, column=0, sticky='nsew')
+        self.ids_frame.rowconfigure(0, weight=1)
         self.ids_frame.columnconfigure(0, weight=1)
         self.ids_frame.columnconfigure(1, weight=0)
         self.bind_to_mousewheel(self.ids_text)
@@ -166,22 +167,24 @@ class MainWindow(tk.Tk):
         )
         self.resizable(width=tk.TRUE, height=tk.TRUE)
 
+    def set_fonts(self):
+        self.bigger_font = tkfont.Font(font=ttk.Label(self)['font'])
+        bigger_font_options = self.bigger_font.actual()
+        self.bigger_font.configure(size=bigger_font_options['size'] + 1, weight='bold')
+        self.text_heading_font = tkfont.Font(font=tk.Text(self)['font'])
+        self.text_heading_font.configure(family=bigger_font_options['family'])
+
     def set_styles(self):
         self.style.configure(
             'TCheckbutton',
             background='white',
             wraplength=self.winfo_width() // 2 - 50
         )
-        # self.style.configure('TPanedwindow', background='white')
         self.style.configure(
             'Paned.TLabel',
             wraplength=self.winfo_width() // 2 - 25,
             background='white'
         )
-
-        self.bigger_font = tkfont.Font(font=ttk.Label(self)['font'])
-        font_options = self.bigger_font.actual()
-        self.bigger_font.configure(size=font_options['size'] + 1, weight='bold')
         self.style.configure(
             'Top.TLabel',
             font=self.bigger_font,
@@ -196,18 +199,16 @@ class MainWindow(tk.Tk):
             background='white'
         )
 
-    def update_wraplength(self, event, style):
-        style.configure(
-            'TCheckbutton',
-            wraplength=event.width // 2 - (50 + self.scroll_classes_list.winfo_reqwidth())
-        )
-        style.configure(
-            'Paned.TLabel',
-            wraplength=event.width // 2 - 25
-        )
-        style.configure(
+    def update_full_wraplength(self, event):
+        self.style.configure(
             'Top.TLabel',
             wraplength=event.width - 40
+        )
+
+    def update_paned_wraplength(self, event, classname):
+        self.style.configure(
+            '{}.TCheckbutton'.format(classname),
+            wraplength=event.width - (40 + self.scroll_classes_list.winfo_reqwidth())
         )
 
     def start_parsing(self, event=None):
@@ -237,44 +238,48 @@ class MainWindow(tk.Tk):
     
     def toggle_all_classes(self):
         if self.toggle_classes.get() == 1:
-            self.toggle_classes_str.set('Unselect all classes')
+            self.toggle_classes_str.set('Unselect all')
             for is_selected in self.check_undefined_attributes['classes'].values():
                 is_selected.set(True)
         else:
-            self.toggle_classes_str.set('Select all classes')
+            self.toggle_classes_str.set('Select all')
             for is_selected in self.check_undefined_attributes['classes'].values():
                 is_selected.set(False)
         
     def toggle_all_ids(self):
         if self.toggle_ids.get() == 1:
-            self.toggle_ids_str.set('Unselect all ids')
+            self.toggle_ids_str.set('Unselect all')
             for is_selected in self.check_undefined_attributes['ids'].values():
                 is_selected.set(True)
         else:
-            self.toggle_ids_str.set('Select all ids')
+            self.toggle_ids_str.set('Select all')
             for is_selected in self.check_undefined_attributes['ids'].values():
                 is_selected.set(False)
 
     def populate_text_widgets(self, attributes_list: dict):
         self.undefined_attributes = attributes_list
-        self.classes_label_text.set(
-            'Classes found in XHTML without references in CSS.\nSelect the ones you want to delete:'
-        )
         self.classes_text.config(state=tk.NORMAL)
+        self.classes_text.insert(
+            'insert',
+            'Classes found in XHTML without references in CSS.\nSelect the ones you want to delete:\n',
+            'heading'
+        )
+        self.classes_text.insert('insert', '\n')
         if attributes_list['classes']:
             self.toggle_classes = tk.BooleanVar()
             self.toggle_classes_str = tk.StringVar()
-            self.toggle_classes_str.set('Unselect all classes')
+            self.toggle_classes_str.set('Unselect all')
             self.check_toggle_classes = ttk.Checkbutton(
                 self.classes_text,
                 textvariable=self.toggle_classes_str,
                 variable=self.toggle_classes,
                 onvalue=True, offvalue=False,
                 command=self.toggle_all_classes,
-                cursor="arrow"
+                cursor="arrow",
+                style='Classes.TCheckbutton'
             )
             self.add_bindtag(self.check_toggle_classes, self.classes_text)
-            self.classes_text.window_create('end', window=self.check_toggle_classes)
+            self.classes_text.window_create('end', window=self.check_toggle_classes, padx=4, pady=2)
             self.classes_text.insert('end', '\n\n')
             self.toggle_classes.set(True)
             
@@ -289,35 +294,40 @@ class MainWindow(tk.Tk):
                     text='{}   - Found in: {}'.format(class_, occurrences),
                     variable=self.check_undefined_attributes['classes'][class_],
                     onvalue=True, offvalue=False,
-                    cursor='arrow'
+                    cursor='arrow',
+                    style='Classes.TCheckbutton'
                 )
                 self.add_bindtag(class_checkbutton, self.classes_text)
-                self.classes_text.window_create('end', window=class_checkbutton)
+                self.classes_text.window_create('end', window=class_checkbutton, padx=4, pady=2)
                 self.classes_text.insert('end', '\n')
                 self.check_undefined_attributes['classes'][class_].set(True)
         else:
             self.classes_text.insert('end', 'I found no unreferenced classes.')
         self.classes_text.config(state=tk.DISABLED)
 
-        self.ids_label_text.set(
-            'Id found in XHTML without references in CSS and in fragment identifiers.\n'
-            'Select the ones you want to delete:'
-        )
         self.ids_text.config(state=tk.NORMAL)
+        self.ids_text.insert(
+            'insert',
+            'Id found in XHTML without references in CSS nor in fragment identifiers.\n'
+            'Select the ones you want to delete:\n',
+            'heading'
+        )
+        self.ids_text.insert('insert', '\n')
         if attributes_list['ids']:
             self.toggle_ids = tk.BooleanVar()
             self.toggle_ids_str = tk.StringVar()
-            self.toggle_ids_str.set('Unselect all ids')
+            self.toggle_ids_str.set('Unselect all')
             self.check_toggle_ids = ttk.Checkbutton(
                 self.ids_text,
                 textvariable=self.toggle_ids_str,
                 variable=self.toggle_ids,
                 onvalue=True, offvalue=False,
                 command=self.toggle_all_ids,
-                cursor="arrow"
+                cursor="arrow",
+                style='Ids.TCheckbutton'
             )
             self.add_bindtag(self.check_toggle_ids, self.ids_text)
-            self.ids_text.window_create('end', window=self.check_toggle_ids)
+            self.ids_text.window_create('end', window=self.check_toggle_ids, padx=4, pady=2)
             self.ids_text.insert('end', '\n\n')
             self.toggle_ids.set(True)
             for id_ in attributes_list['ids']:
@@ -331,10 +341,11 @@ class MainWindow(tk.Tk):
                     text='{}   - Found in: {}'.format(id_, occurrences),
                     variable=self.check_undefined_attributes['ids'][id_],
                     onvalue=True, offvalue=False,
-                    cursor='arrow'
+                    cursor='arrow',
+                    style='Ids.TCheckbutton'
                 )
                 self.add_bindtag(id_checkbutton, self.ids_text)
-                self.ids_text.window_create('end', window=id_checkbutton)
+                self.ids_text.window_create('end', window=id_checkbutton, padx=4, pady=2)
                 self.ids_text.insert('end', '\n')
                 self.check_undefined_attributes['ids'][id_].set(True)
         else:
