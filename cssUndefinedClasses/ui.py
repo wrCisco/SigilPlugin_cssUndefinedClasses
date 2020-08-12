@@ -81,6 +81,9 @@ class MainWindow(tk.Tk):
             self.classes_frame,
             yscrollcommand=self.scroll_classes_list.set,
             borderwidth=0,
+            highlightbackground='#999',
+            highlightcolor='#999',
+            highlightthickness=1,
             padx=0, pady=0,
             relief=tk.FLAT,
             font=self.text_heading_font
@@ -88,6 +91,10 @@ class MainWindow(tk.Tk):
         self.classes_text.tag_config(
             'heading',
             background='#EEE', spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
+        )
+        self.classes_text.tag_config(
+            'body',
+            lmargin1=6, lmargin2=6, rmargin=6
         )
         self.scroll_classes_list.grid(row=0, column=1, sticky='nsew')
         self.scroll_classes_list['command'] = self.classes_text.yview
@@ -103,6 +110,9 @@ class MainWindow(tk.Tk):
             self.ids_frame,
             yscrollcommand=self.scroll_ids_list.set,
             borderwidth=0,
+            highlightbackground='#999',
+            highlightcolor='#999',
+            highlightthickness=1,
             padx=0, pady=0,
             relief=tk.FLAT,
             font=self.text_heading_font
@@ -110,6 +120,10 @@ class MainWindow(tk.Tk):
         self.ids_text.tag_config(
             'heading',
             background='#EEE', spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
+        )
+        self.ids_text.tag_config(
+            'body',
+            lmargin1=6, lmargin2=6, rmargin=6
         )
         self.scroll_ids_list.grid(row=0, column=1, sticky='nsew')
         self.scroll_ids_list['command'] = self.ids_text.yview
@@ -194,8 +208,8 @@ class MainWindow(tk.Tk):
         self.style.configure('Big.TButton', font=self.bigger_font)
         self.style.configure(
             'Paned.TFrame',
-            relief=tk.RIDGE,
-            borderwidth=1,
+            relief=tk.FLAT,
+            borderwidth=0,
             background='white'
         )
 
@@ -302,7 +316,7 @@ class MainWindow(tk.Tk):
                 self.classes_text.insert('end', '\n')
                 self.check_undefined_attributes['classes'][class_].set(True)
         else:
-            self.classes_text.insert('end', 'I found no unreferenced classes.')
+            self.classes_text.insert('end', 'I found no unreferenced classes.', 'body')
         self.classes_text.config(state=tk.DISABLED)
 
         self.ids_text.config(state=tk.NORMAL)
@@ -349,7 +363,7 @@ class MainWindow(tk.Tk):
                 self.ids_text.insert('end', '\n')
                 self.check_undefined_attributes['ids'][id_].set(True)
         else:
-            self.ids_text.insert('end', 'I found no unreferenced id.')
+            self.ids_text.insert('end', 'I found no unreferenced id.', 'body')
         self.ids_text.config(state=tk.DISABLED)
 
     def add_bindtag(self, widget, other):
