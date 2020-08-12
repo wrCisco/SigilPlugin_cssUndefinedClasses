@@ -90,7 +90,7 @@ class MainWindow(tk.Tk):
         )
         self.classes_text.tag_config(
             'heading',
-            background='#EEE', spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
+            background='#F2F2F2', spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
         )
         self.classes_text.tag_config(
             'body',
@@ -119,7 +119,7 @@ class MainWindow(tk.Tk):
         )
         self.ids_text.tag_config(
             'heading',
-            background='#EEE', spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
+            background='#F2F2F2', spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
         )
         self.ids_text.tag_config(
             'body',
@@ -180,6 +180,7 @@ class MainWindow(tk.Tk):
             )
         )
         self.resizable(width=tk.TRUE, height=tk.TRUE)
+        self.protocol('WM_DELETE_WINDOW', self.destroy)
 
     def set_fonts(self):
         self.bigger_font = tkfont.Font(font=ttk.Label(self)['font'])
@@ -240,6 +241,8 @@ class MainWindow(tk.Tk):
                 'than press again the "Proceed" button.'
             )
             self.start_button['command'] = self.proceed
+            self.start_button.bind('<Return>', self.proceed)
+            self.start_button.bind('<KP_Enter>', self.proceed)
 
     def proceed(self, event=None):
         for attr_type, attributes in self.check_undefined_attributes.items():
