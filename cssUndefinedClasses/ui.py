@@ -240,11 +240,11 @@ class MainWindow(tk.Tk):
                 'Select classes and ids that you want to remove from your xhtml, '
                 'than press again the "Proceed" button.'
             )
-            self.start_button['command'] = self.proceed
-            self.start_button.bind('<Return>', self.proceed)
-            self.start_button.bind('<KP_Enter>', self.proceed)
+            self.start_button['command'] = self.delete_selected_attributes
+            self.start_button.bind('<Return>', self.delete_selected_attributes)
+            self.start_button.bind('<KP_Enter>', self.delete_selected_attributes)
 
-    def proceed(self, event=None):
+    def delete_selected_attributes(self, event=None):
         for attr_type, attributes in self.check_undefined_attributes.items():
             for attribute, has_to_be_deleted in attributes.items():
                 if not has_to_be_deleted.get():
