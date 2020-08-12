@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin>
+    <name>cssUndefinedClasses</name>
+    <type>edit</type>
+    <author>Francesco Martini</author>
+    <description>Find, and optionally delete, classes in XHTML that are not part of any CSS selector.</description>
+    <engine>python3.4</engine>
+    <version>0.1.0</version>
+    <autostart>true</autostart>
+    <autoclose>false</autoclose>
+    <oslist>osx,unx,win</oslist>
+</plugin>
