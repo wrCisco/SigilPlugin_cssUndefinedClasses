@@ -90,7 +90,8 @@ class MainWindow(tk.Tk):
         )
         self.classes_text.tag_config(
             'heading',
-            background='#F2F2F2', spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
+            background=self.text_heading_bg, foreground=self.text_heading_fg,
+            spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
         )
         self.classes_text.tag_config(
             'body',
@@ -119,7 +120,8 @@ class MainWindow(tk.Tk):
         )
         self.ids_text.tag_config(
             'heading',
-            background='#F2F2F2', spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
+            background=self.text_heading_bg, foreground=self.text_heading_fg,
+            spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
         )
         self.ids_text.tag_config(
             'body',
@@ -136,9 +138,9 @@ class MainWindow(tk.Tk):
 
         self.lower_frame = ttk.Frame(self.mainframe, padding="0 5 0 0")  # W N E S
         self.lower_frame.grid(row=2, column=0, sticky='nsew')
-        self.stop_button = ttk.Button(self.lower_frame, text='Cancel', command=self.destroy, style='Big.TButton')
+        self.stop_button = ttk.Button(self.lower_frame, text='Cancel', command=self.destroy)
         self.stop_button.grid(row=0, column=1, sticky='ne')
-        self.start_button = ttk.Button(self.lower_frame, text='Proceed', command=self.start_parsing, style='Big.TButton')
+        self.start_button = ttk.Button(self.lower_frame, text='Proceed', command=self.start_parsing)
         self.start_button.grid(row=0, column=2, sticky='ne')
         self.stop_button.bind('<Return>', self.destroy)
         self.stop_button.bind('<KP_Enter>', self.destroy)
@@ -183,36 +185,66 @@ class MainWindow(tk.Tk):
         self.protocol('WM_DELETE_WINDOW', self.destroy)
 
     def set_fonts(self):
-        self.bigger_font = tkfont.Font(font=ttk.Label(self)['font'])
+        dummy_label, dummy_text = ttk.Label(self), tk.Text(self)
+        self.bigger_font = tkfont.Font(font=dummy_label['font'])
         bigger_font_options = self.bigger_font.actual()
         self.bigger_font.configure(size=bigger_font_options['size'] + 1, weight='bold')
-        self.text_heading_font = tkfont.Font(font=tk.Text(self)['font'])
+        self.text_heading_font = tkfont.Font(font=dummy_text['font'])
         self.text_heading_font.configure(family=bigger_font_options['family'])
+        dummy_label.destroy()
+        dummy_text.destroy()
 
     def set_styles(self):
+        # text colors and background for text widgets header
+        self.text_heading_bg = '#F2F2F2'
+        self.text_heading_fg = '#0D0D0D'
+        try:
+            if self.bk.colorMode() == 'dark':
+                self.text_heading_bg = '#414649'
+                self.text_heading_fg = '#F2F2F2'
+        except AttributeError:
+            pass
+
+        dummy_text = tk.Text(self)
+        bg = dummy_text['background']
+        fg = dummy_text['foreground']
+        dummy_text.destroy()
         self.style.configure(
             'TCheckbutton',
-            background='white',
+            background=bg,
+            foreground=fg,
             wraplength=self.winfo_width() // 2 - 50
         )
-        self.style.configure(
-            'Paned.TLabel',
-            wraplength=self.winfo_width() // 2 - 25,
-            background='white'
-        )
+        try:
+            if self.bk.colorMode() == 'dark':
+                self.style.configure(
+                    'Hover.Classes.TCheckbutton',
+                    background=fg,
+                    foreground=bg
+                )
+                self.style.configure(
+                    'Hover.Ids.TCheckbutton',
+                    background=fg,
+                    foreground=bg
+                )
+        except AttributeError:
+            pass
         self.style.configure(
             'Top.TLabel',
             font=self.bigger_font,
             padding=20,
             wraplength=self.winfo_width() - 50
         )
-        self.style.configure('Big.TButton', font=self.bigger_font)
-        self.style.configure(
-            'Paned.TFrame',
-            relief=tk.FLAT,
-            borderwidth=0,
-            background='white'
-        )
+
+    def mouse_hover_checkbutton(self, event):
+        event.widget.config(style='Hover.{}'.format(event.widget['style']))
+
+    def mouse_leave_checkbutton(self, event):
+        if event.widget['style'].startswith('Hover.'):
+            style = event.widget['style'][6:]
+        else:
+            style = event.widget['style']
+        event.widget.config(style=style)
 
     def update_full_wraplength(self, event):
         self.style.configure(
@@ -252,7 +284,7 @@ class MainWindow(tk.Tk):
         core.delete_xhtml_attributes(self.bk, self.undefined_attributes)
         self.success = True
         self.destroy()
-    
+
     def toggle_all_classes(self):
         if self.toggle_classes.get() == 1:
             self.toggle_classes_str.set('Unselect all')
@@ -262,7 +294,7 @@ class MainWindow(tk.Tk):
             self.toggle_classes_str.set('Select all')
             for is_selected in self.check_undefined_attributes['classes'].values():
                 is_selected.set(False)
-        
+
     def toggle_all_ids(self):
         if self.toggle_ids.get() == 1:
             self.toggle_ids_str.set('Unselect all')
@@ -296,6 +328,8 @@ class MainWindow(tk.Tk):
                 style='Classes.TCheckbutton'
             )
             self.add_bindtag(self.check_toggle_classes, self.classes_text)
+            self.check_toggle_classes.bind('<Enter>', self.mouse_hover_checkbutton)
+            self.check_toggle_classes.bind('<Leave>', self.mouse_leave_checkbutton)
             self.classes_text.window_create('end', window=self.check_toggle_classes, padx=4, pady=2)
             self.classes_text.insert('end', '\n\n')
             self.toggle_classes.set(True)
@@ -315,6 +349,8 @@ class MainWindow(tk.Tk):
                     style='Classes.TCheckbutton'
                 )
                 self.add_bindtag(class_checkbutton, self.classes_text)
+                class_checkbutton.bind('<Enter>', self.mouse_hover_checkbutton)
+                class_checkbutton.bind('<Leave>', self.mouse_leave_checkbutton)
                 self.classes_text.window_create('end', window=class_checkbutton, padx=4, pady=2)
                 self.classes_text.insert('end', '\n')
                 self.check_undefined_attributes['classes'][class_].set(True)
@@ -344,6 +380,8 @@ class MainWindow(tk.Tk):
                 style='Ids.TCheckbutton'
             )
             self.add_bindtag(self.check_toggle_ids, self.ids_text)
+            self.check_toggle_ids.bind('<Enter>', self.mouse_hover_checkbutton)
+            self.check_toggle_ids.bind('<Leave>', self.mouse_leave_checkbutton)
             self.ids_text.window_create('end', window=self.check_toggle_ids, padx=4, pady=2)
             self.ids_text.insert('end', '\n\n')
             self.toggle_ids.set(True)
@@ -362,6 +400,8 @@ class MainWindow(tk.Tk):
                     style='Ids.TCheckbutton'
                 )
                 self.add_bindtag(id_checkbutton, self.ids_text)
+                id_checkbutton.bind('<Enter>', self.mouse_hover_checkbutton)
+                id_checkbutton.bind('<Leave>', self.mouse_leave_checkbutton)
                 self.ids_text.window_create('end', window=id_checkbutton, padx=4, pady=2)
                 self.ids_text.insert('end', '\n')
                 self.check_undefined_attributes['ids'][id_].set(True)
