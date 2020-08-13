@@ -356,26 +356,26 @@ def find_attributes_to_delete(bk) -> dict:
     ids_to_delete = match_attribute_selectors(css_attrs.ids, xhtml_attrs.id_values)
     ids_to_delete.difference_update(xhtml_attrs.href_fragment_values)
 
-    print('CLASSES IN CSS:')
-    for k, v in css_attrs.classes.items():
-        print(f'{k}: {v}')
-    print('\nIDS IN CSS:')
-    for k, v in css_attrs.ids.items():
-        print(f'{k}: {v}')
-    print('')
-
-    print('CLASSES IN XHTML:')
-    print(xhtml_attrs.class_names)
-    print('LITERAL CLASS VALUES IN XHTML:')
-    print(xhtml_attrs.literal_class_values)
-    print('CLASSES TO DELETE:')
-    print(classes_to_delete)
-    print('ID IN XHTML:')
-    print(xhtml_attrs.id_values)
-    print('FRAGMENTS IN XHTML:')
-    print(xhtml_attrs.href_fragment_values)
-    print('ID TO DELETE:')
-    print(ids_to_delete)
+    # print('CLASSES IN CSS:')
+    # for k, v in css_attrs.classes.items():
+    #     print(f'{k}: {v}')
+    # print('\nIDS IN CSS:')
+    # for k, v in css_attrs.ids.items():
+    #     print(f'{k}: {v}')
+    # print('')
+    #
+    # print('CLASSES IN XHTML:')
+    # print(xhtml_attrs.class_names)
+    # print('LITERAL CLASS VALUES IN XHTML:')
+    # print(xhtml_attrs.literal_class_values)
+    # print('CLASSES TO DELETE:')
+    # print(classes_to_delete)
+    # print('ID IN XHTML:')
+    # print(xhtml_attrs.id_values)
+    # print('FRAGMENTS IN XHTML:')
+    # print(xhtml_attrs.href_fragment_values)
+    # print('ID TO DELETE:')
+    # print(ids_to_delete)
 
     return {
         'classes': classes_to_delete,
@@ -403,5 +403,13 @@ def delete_xhtml_attributes(bk, attributes: dict) -> None:
                         elem['class'].remove(class_)
                     except AttributeError:
                         del elem['class']  # this should never raise a KeyError
-        print(f"\n\nNew {xhtml_href}:\n")
-        print(soup.serialize_xhtml())
+            # I don't know if it's linked to python, sigil, beautifulsoup or gumbo versions:
+            # with some installation the elements keep empty class attributes.
+            try:
+                if not classes:
+                    del elem['class']
+            except KeyError:
+                pass
+        bk.writefile(xhtml_id, soup.serialize_xhtml())
+        # print(f"\n\nNew {xhtml_href}:\n")
+        # print(soup.serialize_xhtml())
