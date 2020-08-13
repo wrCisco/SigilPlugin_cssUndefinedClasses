@@ -18,6 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+import os
 import sys
 import tkinter as tk
 from tkinter import ttk
@@ -216,7 +217,7 @@ class MainWindow(tk.Tk):
             wraplength=self.winfo_width() // 2 - 50
         )
         try:
-            if self.bk.colorMode() == 'dark':
+            if self.bk.colorMode() == 'dark' and not os.environ.get('FORCE_SIGIL_DARKMODE_PALETTE'):
                 self.style.configure(
                     'Hover.Classes.TCheckbutton',
                     background=fg,
@@ -342,7 +343,7 @@ class MainWindow(tk.Tk):
                 self.check_undefined_attributes['classes'][class_] = tk.BooleanVar()
                 class_checkbutton = ttk.Checkbutton(
                     self.classes_text,
-                    text='{}   - Found in: {}'.format(class_, occurrences),
+                    text='{}  -  Found in: {}'.format(class_, occurrences),
                     variable=self.check_undefined_attributes['classes'][class_],
                     onvalue=True, offvalue=False,
                     cursor='arrow',
@@ -393,7 +394,7 @@ class MainWindow(tk.Tk):
                 self.check_undefined_attributes['ids'][id_] = tk.BooleanVar()
                 id_checkbutton = ttk.Checkbutton(
                     self.ids_text,
-                    text='{}   - Found in: {}'.format(id_, occurrences),
+                    text='{}  -  Found in: {}'.format(id_, occurrences),
                     variable=self.check_undefined_attributes['ids'][id_],
                     onvalue=True, offvalue=False,
                     cursor='arrow',
