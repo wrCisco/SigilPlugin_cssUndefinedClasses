@@ -19,6 +19,8 @@
 
 
 import html
+import urllib.parse
+from typing import Optional
 
 import regex as re
 import sigil_bs4
@@ -217,6 +219,13 @@ class CSSParser:
                 i += 1
 
 
+def get_fragid(element: sigil_bs4.Tag) -> str:
+    try:
+        return urllib.parse.unquote(urllib.parse.urldefrag(element['href']).fragment)
+    except KeyError:
+        return ''
+
+
 def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes) -> XHTMLAttributes:
     """
     Parse all the xhtml files in the epub and gather classes, ids
@@ -254,18 +263,9 @@ def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes) -> XHTML
                     a.info_id_values[id_] = {xhtml_href: 1}
                     a.id_values.add(id_)
             # gather fragment identifier in href attribute, if present
-            try:
-                href = elem['href']
-            except KeyError:
-                pass
-            else:
-                try:
-                    # TODO: make sure the URI refererences the epub itself?
-                    href = re.search(r'(?:^#|[^#]+#)(.+)', str(href)).group(1)
-                except AttributeError:
-                    pass
-                else:
-                    a.href_fragment_values.add(href)
+            fragid = get_fragid(elem)
+            if fragid:
+                a.href_fragment_values.add(fragid)
             # gather class names and textual value of class attribute, if present
             classes = elem.get('class', [])
             if isinstance(classes, str):
