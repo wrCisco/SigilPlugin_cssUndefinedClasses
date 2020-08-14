@@ -52,7 +52,7 @@ class XHTMLAttributes:
         self.literal_class_values are the textual values of the attribute
         class, used to match against some of the css attribute selectors.
         self.id_values are the names of all the ids found in xhtml elements.
-        self.href_fragment_values are the values of all the fragment identifier in the
+        self.fragment_identifier are the values of all the fragment identifier in the
         href attributes found in xhtml elements.
 
         self.info_class_names is a dictionary that has the elements of self.class_names
@@ -62,7 +62,7 @@ class XHTMLAttributes:
         self.class_names = set()
         self.literal_class_values = set()
         self.id_values = set()
-        self.href_fragment_values = set()
+        self.fragment_identifier = set()
 
         self.info_class_names = {}
         self.info_id_values = {}
@@ -219,9 +219,9 @@ class CSSParser:
                 i += 1
 
 
-def get_fragid(element: sigil_bs4.Tag) -> str:
+def get_fragid(element: sigil_bs4.Tag, attr_name: str = 'href') -> str:
     try:
-        return urllib.parse.unquote(urllib.parse.urldefrag(element['href']).fragment)
+        return urllib.parse.unquote(urllib.parse.urldefrag(element[attr_name]).fragment)
     except KeyError:
         return ''
 
@@ -265,7 +265,7 @@ def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes) -> XHTML
             # gather fragment identifier in href attribute, if present
             fragid = get_fragid(elem)
             if fragid:
-                a.href_fragment_values.add(fragid)
+                a.fragment_identifier.add(fragid)
             # gather class names and textual value of class attribute, if present
             classes = elem.get('class', [])
             if isinstance(classes, str):
@@ -354,7 +354,7 @@ def find_attributes_to_delete(bk) -> dict:
     classes_to_delete.difference_update(classes_to_keep)
 
     ids_to_delete = match_attribute_selectors(css_attrs.ids, xhtml_attrs.id_values)
-    ids_to_delete.difference_update(xhtml_attrs.href_fragment_values)
+    ids_to_delete.difference_update(xhtml_attrs.fragment_identifier)
 
     # print('CLASSES IN CSS:')
     # for k, v in css_attrs.classes.items():
@@ -373,7 +373,7 @@ def find_attributes_to_delete(bk) -> dict:
     # print('ID IN XHTML:')
     # print(xhtml_attrs.id_values)
     # print('FRAGMENTS IN XHTML:')
-    # print(xhtml_attrs.href_fragment_values)
+    # print(xhtml_attrs.fragment_identifier)
     # print('ID TO DELETE:')
     # print(ids_to_delete)
 
