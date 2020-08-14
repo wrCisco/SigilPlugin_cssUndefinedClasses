@@ -44,6 +44,12 @@ class XHTMLParsingError(Exception):
 
 class XHTMLAttributes:
 
+    fragid_container_attrs = [
+        'href',
+        'epub:textref',
+        'src'
+    ]
+
     def __init__(self):
         """
         Collects class and id values from parsed xhtml files.
@@ -52,8 +58,8 @@ class XHTMLAttributes:
         self.literal_class_values are the textual values of the attribute
         class, used to match against some of the css attribute selectors.
         self.id_values are the names of all the ids found in xhtml elements.
-        self.fragment_identifier are the values of all the fragment identifier in the
-        href attributes found in xhtml elements.
+        self.fragment_identifier are the values of all the fragment identifiers
+        found in xhtml elements.
 
         self.info_class_names is a dictionary that has the elements of self.class_names
         as keys and the occurrences in files as values.
@@ -262,10 +268,11 @@ def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes) -> XHTML
                 else:
                     a.info_id_values[id_] = {xhtml_href: 1}
                     a.id_values.add(id_)
-            # gather fragment identifier in href attribute, if present
-            fragid = get_fragid(elem)
-            if fragid:
-                a.fragment_identifier.add(fragid)
+            # gather fragment identifiers, if present
+            for attr in a.fragid_container_attrs:
+                fragid = get_fragid(elem, attr)
+                if fragid:
+                    a.fragment_identifier.add(fragid)
             # gather class names and textual value of class attribute, if present
             classes = elem.get('class', [])
             if isinstance(classes, str):
@@ -289,6 +296,25 @@ def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes) -> XHTML
     a.class_names.discard('')
     a.literal_class_values.discard('')
     return a
+
+
+def parse_xml(bk: 'BookContainer', collector: XHTMLAttributes) -> XHTMLAttributes:
+    xhtml_files = set(id_ for id_, href in bk.text_iter())
+    for file_id, href, mime in bk.manifest_iter():
+        # if file is xhtml or not xml, skip ahead
+        if file_id in xhtml_files or not re.search(r'[/+]xml\b', mime):
+            continue
+        try:
+            soup = sigil_bs4.BeautifulSoup(bk.readfile(file_id), 'lxml-xml')
+        except Exception as E:
+            raise XHTMLParsingError('Error in {}: {}'.format(utils.href_to_basename(href), E))
+        for elem in soup.find_all(True):
+            # gather fragment identifiers, if present
+            for attr in collector.fragid_container_attrs:
+                fragid = get_fragid(elem, attr)
+                if fragid:
+                    collector.fragment_identifier.add(fragid)
+    return collector
 
 
 def match_attribute_selectors(css_attributes: dict, xhtml_attribute_names: set) -> set:
@@ -326,9 +352,13 @@ def match_attribute_selectors(css_attributes: dict, xhtml_attribute_names: set) 
 
 
 def find_attributes_to_delete(bk) -> dict:
+    # search for classes and ids in css
     my_cssparser = CSSParser()
     css_attrs = my_cssparser.parse_css(bk)
+    # search for classes, ids and fragment identifiers in xhtml
     xhtml_attrs = parse_xhtml(bk, my_cssparser, css_attrs)
+    # search for fragment identifiers also in xml files (ncx, media overlays...)
+    xhtml_attrs = parse_xml(bk, xhtml_attrs)
 
     classes_to_delete = xhtml_attrs.class_names.copy()
     for class_ in xhtml_attrs.class_names:
