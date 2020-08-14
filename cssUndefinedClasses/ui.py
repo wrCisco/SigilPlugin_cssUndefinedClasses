@@ -30,11 +30,41 @@ import core
 import utils
 
 
-class MainWindow(tk.Tk):
+class WidgetFixture(tk.BaseWidget):
+
+    def bind_to_mousewheel(self, widget):
+        if sys.platform.startswith("linux"):
+            widget.bind("<4>", lambda event: self.scroll_on_mousewheel(event, widget))
+            widget.bind("<5>", lambda event: self.scroll_on_mousewheel(event, widget))
+        else:
+            widget.bind("<MouseWheel>", lambda event: self.scroll_on_mousewheel(event, widget))
+
+    @staticmethod
+    def scroll_on_mousewheel(event, widget):
+        if event.num == 5 or event.delta < 0:
+            move = 1
+        else:
+            move = -1
+        widget.yview_scroll(move, tk.UNITS)
+
+    @staticmethod
+    def add_bindtag(widget, other):
+        bindtags = list(widget.bindtags())
+        bindtags.insert(1, str(other))  # self.winfo_pathname(other.winfo_id()))
+        widget.bindtags(tuple(bindtags))
+
+
+class MainWindow(tk.Tk, WidgetFixture):
 
     def __init__(self, bk):
         self.bk = bk
+        self.prefs = self.get_prefs()
         self.success = False  # True when the plugin terminates correctly
+        self.undefined_attributes: Dict[str, Set[str]] = {}
+        self.check_undefined_attributes = {
+            'classes': {},
+            'ids': {}
+        }
 
         super().__init__()
         self.style = ttk.Style()
@@ -42,6 +72,7 @@ class MainWindow(tk.Tk):
         self.set_geometry()
         self.set_fonts()
         self.set_styles()
+        self.protocol('WM_DELETE_WINDOW', self.destroy)
 
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
@@ -137,12 +168,25 @@ class MainWindow(tk.Tk):
         self.bind_to_mousewheel(self.ids_text)
         self.ids_text.config(state=tk.DISABLED)
 
+        # self.warning_frame = ttk.Frame(self.mainframe, padding="0 5 0 0")
+        # self.warning_frame.grid(row=2, column=0, sticky='nsew')
+        self.warning_text = tk.StringVar()
+        self.warning_label = ttk.Label(
+            self.mainframe,
+            textvariable=self.warning_text,
+            style='Warning.TLabel'
+        )
+        self.warning_label.grid(row=2, column=0, sticky='nsew')
+        self.update_warning()
+
         self.lower_frame = ttk.Frame(self.mainframe, padding="0 5 0 0")  # W N E S
-        self.lower_frame.grid(row=2, column=0, sticky='nsew')
+        self.lower_frame.grid(row=3, column=0, sticky='nsew')
+        self.prefs_button = ttk.Button(self.lower_frame, text='Preferences', command=self.prefs_dlg)
+        self.prefs_button.grid(row=0, column=0, sticky='nw')
         self.stop_button = ttk.Button(self.lower_frame, text='Cancel', command=self.destroy)
-        self.stop_button.grid(row=0, column=1, sticky='ne')
+        self.stop_button.grid(row=0, column=2, sticky='ne')
         self.start_button = ttk.Button(self.lower_frame, text='Proceed', command=self.start_parsing)
-        self.start_button.grid(row=0, column=2, sticky='ne')
+        self.start_button.grid(row=0, column=3, sticky='ne')
         self.stop_button.bind('<Return>', self.destroy)
         self.stop_button.bind('<KP_Enter>', self.destroy)
         self.start_button.bind('<Return>', self.start_parsing)
@@ -150,20 +194,16 @@ class MainWindow(tk.Tk):
         self.start_button.focus_set()
 
         self.lower_frame.rowconfigure(0, weight=0)
-        self.lower_frame.columnconfigure(0, weight=1)
-        self.lower_frame.columnconfigure(1, weight=0)
+        self.lower_frame.columnconfigure(0, weight=0)
+        self.lower_frame.columnconfigure(1, weight=1)
         self.lower_frame.columnconfigure(2, weight=0)
+        self.lower_frame.columnconfigure(3, weight=0)
 
         self.mainframe.rowconfigure(0, weight=0)
         self.mainframe.rowconfigure(1, weight=1)
         self.mainframe.rowconfigure(2, weight=0)
+        self.mainframe.rowconfigure(3, weight=0)
         self.mainframe.columnconfigure(0, weight=1)
-
-        self.undefined_attributes: Dict[str, Set[str]] = {}
-        self.check_undefined_attributes = {
-            'classes': {},
-            'ids': {}
-        }
 
     def set_geometry(self):
         screen_width = self.winfo_screenwidth()
@@ -183,7 +223,6 @@ class MainWindow(tk.Tk):
             )
         )
         self.resizable(width=tk.TRUE, height=tk.TRUE)
-        self.protocol('WM_DELETE_WINDOW', self.destroy)
 
     def set_fonts(self):
         dummy_label, dummy_text = ttk.Label(self), tk.Text(self)
@@ -211,7 +250,13 @@ class MainWindow(tk.Tk):
         fg = dummy_text['foreground']
         dummy_text.destroy()
         self.style.configure(
-            'TCheckbutton',
+            'Classes.TCheckbutton',
+            background=bg,
+            foreground=fg,
+            wraplength=self.winfo_width() // 2 - 50
+        )
+        self.style.configure(
+            'Ids.TCheckbutton',
             background=bg,
             foreground=fg,
             wraplength=self.winfo_width() // 2 - 50
@@ -230,10 +275,16 @@ class MainWindow(tk.Tk):
                 )
         except AttributeError:
             pass
+        self.style.configure('Preferences.TCheckbutton', )
         self.style.configure(
             'Top.TLabel',
             font=self.bigger_font,
             padding=20,
+            wraplength=self.winfo_width() - 50
+        )
+        self.style.configure(
+            'Warning.TLabel',
+            padding='0 5 0 0',
             wraplength=self.winfo_width() - 50
         )
 
@@ -252,6 +303,10 @@ class MainWindow(tk.Tk):
             'Top.TLabel',
             wraplength=event.width - 40
         )
+        self.style.configure(
+            'Warning.TLabel',
+            wraplength=event.width - 40
+        )
 
     def update_paned_wraplength(self, event, classname):
         self.style.configure(
@@ -261,17 +316,23 @@ class MainWindow(tk.Tk):
 
     def start_parsing(self, event=None):
         try:
-            self.populate_text_widgets(core.find_attributes_to_delete(self.bk))
+            self.populate_text_widgets(core.find_attributes_to_delete(self.bk, self.prefs))
         except core.CSSParsingError as E:
             msgbox.showerror('Error while parsing stylesheets', '{}\nThe plugin will terminate.'.format(E))
             self.destroy()
-        except core.XHTMLParsingError as E:
-            msgbox.showerror('Error while parsing XHTML', '{}\nThe plugin will terminate.'.format(E))
+        except core.XMLParsingError as E:
+            msgbox.showerror('Error while parsing an XML or XHTML file', '{}\nThe plugin will terminate.'.format(E))
             self.destroy()
         else:
             self.top_label_text.set(
                 'Select classes and ids that you want to remove from your xhtml, '
                 'then press again the "Proceed" button.'
+            )
+            self.prefs_button.configure(state=tk.DISABLED)
+            self.warning_text.set(
+                'Search for classes and ids to remove has been done on {} files.'.format(
+                    'selected' if self.prefs['parse_only_selected_files'] else 'all xhtml'
+                )
             )
             self.start_button['command'] = self.delete_selected_attributes
             self.start_button.bind('<Return>', self.delete_selected_attributes)
@@ -282,8 +343,11 @@ class MainWindow(tk.Tk):
             for attribute, has_to_be_deleted in attributes.items():
                 if not has_to_be_deleted.get():
                     self.undefined_attributes[attr_type].discard(attribute)
-        core.delete_xhtml_attributes(self.bk, self.undefined_attributes)
+        core.delete_xhtml_attributes(self.bk, self.undefined_attributes, self.prefs)
         self.success = True
+        # reset selected files on success
+        self.prefs['selected_files'] = []
+        self.bk.savePrefs(self.prefs)
         self.destroy()
 
     def toggle_all_classes(self):
@@ -410,21 +474,160 @@ class MainWindow(tk.Tk):
             self.ids_text.insert('end', 'I found no unreferenced id.', 'body')
         self.ids_text.config(state=tk.DISABLED)
 
-    def add_bindtag(self, widget, other):
-        bindtags = list(widget.bindtags())
-        bindtags.insert(1, str(other))  # self.winfo_pathname(other.winfo_id()))
-        widget.bindtags(tuple(bindtags))
+    def get_prefs(self):
+        prefs = self.bk.getPrefs()
 
-    def bind_to_mousewheel(self, widget):
-        if sys.platform.startswith("linux"):
-            widget.bind("<4>", lambda event: self.scroll_on_mousewheel(event, widget))
-            widget.bind("<5>", lambda event: self.scroll_on_mousewheel(event, widget))
-        else:
-            widget.bind("<MouseWheel>", lambda event: self.scroll_on_mousewheel(event, widget))
+        prefs.defaults['parse_only_selected_files'] = False
+        prefs.defaults['selected_files'] = []
+        prefs.defaults['fragid_container_attrs'] = []  # if empty, use core.XHTMLAttributes
 
-    def scroll_on_mousewheel(self, event, widget):
-        if event.num == 5 or event.delta < 0:
-            move = 1
+        return prefs
+
+    def prefs_dlg(self):
+        w = PrefsDialog(self, self.bk)
+        self.wait_window(w)
+        self.update_warning()
+
+    def update_warning(self):
+        self.warning_text.set(
+            '{} files will be searched for classes and ids to remove. '
+            'Open the Preferences pane to update this option.'.format(
+                'Only selected' if self.prefs['parse_only_selected_files'] else 'All xhtml'
+            )
+        )
+
+
+class PrefsDialog(tk.Toplevel, WidgetFixture):
+
+    def __init__(self, parent=None, bk=None, prefs=None):
+        self.bk = bk
+        if prefs:
+            self.prefs = prefs
         else:
-            move = -1
-        widget.yview_scroll(move, tk.UNITS)
+            self.prefs = parent.prefs
+
+        super().__init__(parent)
+        self.transient(parent)
+        self.title('Preferences')
+        self.geometry('600x400')
+        self.resizable(width=tk.TRUE, height=tk.TRUE)
+        self.protocol('WM_DELETE_WINDOW', self.destroy)
+
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.mainframe = ttk.Frame(self, padding="12 12 12 12")  # W N E S
+        self.mainframe.grid(column=0, row=0, sticky='nwes')
+        self.mainframe.bind(
+            '<Configure>',
+            self.update_full_width
+        )
+
+        self.parse_only_selected_value = tk.BooleanVar()
+        self.parse_only_selected_check = ttk.Checkbutton(
+            self.mainframe,
+            text='Search for classes and ids to remove only in selected files',
+            variable=self.parse_only_selected_value,
+            onvalue=True, offvalue=False
+        )
+        self.parse_only_selected_check.grid(row=0, column=0, sticky='nsew')
+        self.selected_files_frame = ttk.Frame(self.mainframe)
+        self.selected_files_frame.grid(row=1, column=0, sticky='nsew')
+        self.selected_files_value = tk.StringVar()
+        self.selected_files_scroll = ttk.Scrollbar(self.selected_files_frame, orient=tk.VERTICAL)
+        self.selected_files_list = tk.Listbox(
+            self.selected_files_frame,
+            activestyle='dotbox',
+            selectmode=tk.MULTIPLE,
+            yscrollcommand=self.selected_files_scroll.set,
+            listvariable=self.selected_files_value
+        )
+        self.selected_files_value.set(' '.join('"{}"'.format(href) for id_, href in self.bk.text_iter()))
+        self.selected_files_font = tkfont.Font(font=self.selected_files_list['font'])
+        self.selected_files_list.grid(sticky='nsew')
+        self.selected_files_scroll.grid(row=0, column=1, sticky='nsew')
+        self.selected_files_scroll['command'] = self.selected_files_list.yview
+        # self.bind_to_mousewheel(self.selected_files_list)
+        self.selected_files_frame.rowconfigure(0, weight=1)
+        self.selected_files_frame.columnconfigure(0, weight=1)
+
+        self.fragid_attrs_label = ttk.Label(
+            self.mainframe,
+            text='Comma separated list of attributes that will be used to search for fragment identifiers '
+                 '(an empty list will default to {}).'.format(', '.join(core.XHTMLAttributes.fragid_container_attrs)),
+            wraplength=self.mainframe.winfo_width() - 10,
+            padding='0 18 0 6'
+        )
+        self.fragid_attrs_label.grid(row=2, column=0, sticky='nsew')
+        self.fragid_attrs_value = tk.StringVar()
+        self.fragid_attrs_entry = ttk.Entry(
+            self.mainframe,
+            textvariable=self.fragid_attrs_value,
+            exportselection=0
+        )
+        self.fragid_font = tkfont.Font(font=self.fragid_attrs_entry['font'])
+        fragid_entry_width = self.mainframe.winfo_reqwidth() // self.fragid_font.measure('m')
+        self.fragid_attrs_entry.configure(width=fragid_entry_width)
+        self.fragid_attrs_entry.grid(row=3, column=0, sticky='nsew')
+
+        self.lower_frame = ttk.Frame(self.mainframe, padding="0 12 0 0")
+        self.lower_frame.grid(row=4, column=0, sticky='nsew')
+
+        self.cancel_button = ttk.Button(self.lower_frame, text='Cancel', command=self.destroy)
+        self.cancel_button.grid(row=0, column=1, sticky='ne')
+        self.ok_button = ttk.Button(self.lower_frame, text='OK', command=self.save_and_proceed)
+        self.ok_button.grid(row=0, column=2, sticky='ne')
+        self.cancel_button.bind('<Return>', self.destroy)
+        self.cancel_button.bind('<KP_Enter>', self.destroy)
+        self.ok_button.bind('<Return>', self.save_and_proceed)
+        self.ok_button.bind('<KP_Enter>', self.save_and_proceed)
+
+        self.lower_frame.rowconfigure(0, weight=0)
+        self.lower_frame.columnconfigure(0, weight=1)
+        self.lower_frame.columnconfigure(1, weight=0)
+        self.lower_frame.columnconfigure(2, weight=0)
+
+        self.mainframe.rowconfigure(1, weight=1)
+        self.mainframe.columnconfigure(0, weight=1)
+
+        self.ok_button.focus_set()
+        self.grab_set()
+
+        self.get_initial_values()
+
+    def get_initial_values(self):
+        if self.prefs.get('fragid_container_attrs'):
+            self.fragid_attrs_value.set(', '.join(self.prefs['fragid_container_attrs']))
+        else:
+            self.fragid_attrs_value.set(', '.join(core.XHTMLAttributes.fragid_container_attrs))
+        if self.prefs.get('parse_only_selected_files'):
+            self.parse_only_selected_value.set(1)
+        else:
+            self.parse_only_selected_value.set(0)
+        if self.prefs.get('selected_files'):
+            selected_files = [self.bk.href_to_id(sel) for sel in self.prefs.get('selected_files')]
+        else:
+            selected_files = [selected[1] for selected in self.bk.selected_iter()]
+        if selected_files:
+            selected_files_names = [self.bk.id_to_href(sel) for sel in selected_files]
+            lines = self.selected_files_list.get(0, self.selected_files_list.size()-1)
+            for index, name in enumerate(lines):
+                if name in selected_files_names:
+                    self.selected_files_list.selection_set(index)
+
+    def save_and_proceed(self):
+        fragid_attrs = self.fragid_attrs_value.get()
+        self.prefs['fragid_container_attrs'] = [attr.strip() for attr in fragid_attrs.split(',') if attr]
+        if self.parse_only_selected_value.get() == 1:
+            self.prefs['parse_only_selected_files'] = True
+        else:
+            self.prefs['parse_only_selected_files'] = False
+        self.bk.savePrefs(self.prefs)
+        # this last value doesn't need to be saved permanently
+        selected_files = [self.selected_files_list.get(i) for i in self.selected_files_list.curselection()]
+        self.prefs['selected_files'] = selected_files
+        self.destroy()
+
+    def update_full_width(self, event=None):
+        self.fragid_attrs_label.configure(wraplength=event.width - 25)
+        fragid_entry_width = event.width // self.fragid_font.measure('0')
+        self.fragid_attrs_entry.configure(width=fragid_entry_width)

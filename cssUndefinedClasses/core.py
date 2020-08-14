@@ -20,7 +20,7 @@
 
 import html
 import urllib.parse
-from typing import Optional
+from typing import MutableMapping
 
 import regex as re
 import sigil_bs4
@@ -38,8 +38,9 @@ class CSSParsingError(Exception):
     pass
 
 
-class XHTMLParsingError(Exception):
+class XMLParsingError(Exception):
     pass
+
 
 
 class XHTMLAttributes:
@@ -232,19 +233,22 @@ def get_fragid(element: sigil_bs4.Tag, attr_name: str = 'href') -> str:
         return ''
 
 
-def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes) -> XHTMLAttributes:
+def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes, prefs: MutableMapping) -> XHTMLAttributes:
     """
     Parse all the xhtml files in the epub and gather classes, ids
     and fragment identifiers. Also, gather css classes and ids
     from <style> elements.
     """
     a = XHTMLAttributes()
+    fragid_container_attrs = prefs['fragid_container_attrs'] or a.fragid_container_attrs
     for xhtml_id, xhtml_href in bk.text_iter():
+        if prefs['parse_only_selected_files'] and xhtml_href not in prefs['selected_files']:
+            continue
         filename = utils.href_to_basename(xhtml_href)
         try:
             soup = gumbo_bs4.parse(bk.readfile(xhtml_id))
         except Exception as E:
-            raise XHTMLParsingError('Error in {}: {}'.format(filename, E))
+            raise XMLParsingError('Error in {}: {}'.format(filename, E))
         for elem in soup.find_all(True):
             # tag 'style': gather all css classes and ids
             if elem.name == 'style':
@@ -269,7 +273,7 @@ def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes) -> XHTML
                     a.info_id_values[id_] = {xhtml_href: 1}
                     a.id_values.add(id_)
             # gather fragment identifiers, if present
-            for attr in a.fragid_container_attrs:
+            for attr in fragid_container_attrs:
                 fragid = get_fragid(elem, attr)
                 if fragid:
                     a.fragment_identifier.add(fragid)
@@ -298,7 +302,8 @@ def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes) -> XHTML
     return a
 
 
-def parse_xml(bk: 'BookContainer', collector: XHTMLAttributes) -> XHTMLAttributes:
+def parse_xml(bk: 'BookContainer', collector: XHTMLAttributes, prefs: MutableMapping) -> XHTMLAttributes:
+    fragid_container_attrs = prefs['fragid_container_attrs'] or collector.fragid_container_attrs
     xhtml_files = set(id_ for id_, href in bk.text_iter())
     for file_id, href, mime in bk.manifest_iter():
         # if file is xhtml or not xml, skip ahead
@@ -307,10 +312,10 @@ def parse_xml(bk: 'BookContainer', collector: XHTMLAttributes) -> XHTMLAttribute
         try:
             soup = sigil_bs4.BeautifulSoup(bk.readfile(file_id), 'lxml-xml')
         except Exception as E:
-            raise XHTMLParsingError('Error in {}: {}'.format(utils.href_to_basename(href), E))
+            raise XMLParsingError('Error in {}: {}'.format(utils.href_to_basename(href), E))
         for elem in soup.find_all(True):
             # gather fragment identifiers, if present
-            for attr in collector.fragid_container_attrs:
+            for attr in fragid_container_attrs:
                 fragid = get_fragid(elem, attr)
                 if fragid:
                     collector.fragment_identifier.add(fragid)
@@ -351,14 +356,14 @@ def match_attribute_selectors(css_attributes: dict, xhtml_attribute_names: set) 
     return attrs_to_delete
 
 
-def find_attributes_to_delete(bk) -> dict:
+def find_attributes_to_delete(bk, prefs) -> dict:
     # search for classes and ids in css
     my_cssparser = CSSParser()
     css_attrs = my_cssparser.parse_css(bk)
     # search for classes, ids and fragment identifiers in xhtml
-    xhtml_attrs = parse_xhtml(bk, my_cssparser, css_attrs)
+    xhtml_attrs = parse_xhtml(bk, my_cssparser, css_attrs, prefs)
     # search for fragment identifiers also in xml files (ncx, media overlays...)
-    xhtml_attrs = parse_xml(bk, xhtml_attrs)
+    xhtml_attrs = parse_xml(bk, xhtml_attrs, prefs)
 
     classes_to_delete = xhtml_attrs.class_names.copy()
     for class_ in xhtml_attrs.class_names:
@@ -415,8 +420,10 @@ def find_attributes_to_delete(bk) -> dict:
     }
 
 
-def delete_xhtml_attributes(bk, attributes: dict) -> None:
+def delete_xhtml_attributes(bk, attributes: dict, prefs: MutableMapping) -> None:
     for xhtml_id, xhtml_href in bk.text_iter():
+        if prefs['parse_only_selected_files'] and xhtml_href not in prefs['selected_files']:
+            continue
         soup = gumbo_bs4.parse(bk.readfile(xhtml_id))
         for elem in soup.find_all(True):
             try:
