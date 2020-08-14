@@ -271,7 +271,7 @@ class MainWindow(tk.Tk):
         else:
             self.top_label_text.set(
                 'Select classes and ids that you want to remove from your xhtml, '
-                'than press again the "Proceed" button.'
+                'then press again the "Proceed" button.'
             )
             self.start_button['command'] = self.delete_selected_attributes
             self.start_button.bind('<Return>', self.delete_selected_attributes)
