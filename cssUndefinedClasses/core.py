@@ -242,14 +242,25 @@ def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes, prefs: M
     a = XHTMLAttributes()
     fragid_container_attrs = prefs['fragid_container_attrs'] or a.fragid_container_attrs
     for xhtml_id, xhtml_href in bk.text_iter():
-        if prefs['parse_only_selected_files'] and xhtml_href not in prefs['selected_files']:
-            continue
         filename = utils.href_to_basename(xhtml_href)
         try:
             soup = gumbo_bs4.parse(bk.readfile(xhtml_id))
         except Exception as E:
             raise XMLParsingError('Error in {}: {}'.format(filename, E))
+        if prefs['parse_only_selected_files'] and xhtml_href not in prefs['selected_files']:
+            gather_only_fragid = True
+        else:
+            gather_only_fragid = False
+
         for elem in soup.find_all(True):
+            # gather fragment identifiers, if present
+            for attr in fragid_container_attrs:
+                fragid = get_fragid(elem, attr)
+                if fragid:
+                    a.fragment_identifier.add(fragid)
+            if gather_only_fragid:
+                continue
+
             # tag 'style': gather all css classes and ids
             if elem.name == 'style':
                 try:
@@ -272,11 +283,6 @@ def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes, prefs: M
                 else:
                     a.info_id_values[id_] = {xhtml_href: 1}
                     a.id_values.add(id_)
-            # gather fragment identifiers, if present
-            for attr in fragid_container_attrs:
-                fragid = get_fragid(elem, attr)
-                if fragid:
-                    a.fragment_identifier.add(fragid)
             # gather class names and textual value of class attribute, if present
             classes = elem.get('class', [])
             if isinstance(classes, str):
