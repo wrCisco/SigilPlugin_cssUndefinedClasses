@@ -3,7 +3,7 @@
 
 
 import unittest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 
 import core
 from tests import resources
@@ -21,8 +21,7 @@ class Parser(unittest.TestCase):
         self.read_css_patch = patch('utils.read_css', side_effect=read_css)
         self.read_css = self.read_css_patch.start()
 
-        read_file = Mock(side_effect=bk_readfile)
-        self.bk.readfile = read_file
+        self.bk.readfile = Mock(side_effect=bk_readfile)
 
     def tearDown(self):
         self.read_css_patch.stop()
@@ -31,8 +30,7 @@ class Parser(unittest.TestCase):
 class CSSParserTest(Parser):
 
     def test_parse_css_ok(self):
-        css_iter = Mock(side_effect=lambda: bk_css_iter([('css1', 'href1')]))
-        self.bk.css_iter = css_iter
+        self.bk.css_iter.side_effect = lambda: bk_css_iter([('css1', 'href1')])
         collector = self.cssparser.parse_css(self.bk)
         self.assertTrue(self.bk.css_iter.called)
         self.read_css.assert_called_once_with(self.bk, 'css1')
@@ -46,8 +44,7 @@ class CSSParserTest(Parser):
         )
 
     def test_parse_css_parsing_error(self):
-        css_iter = Mock(side_effect=lambda: bk_css_iter([('css2', 'href2')]))
-        self.bk.css_iter = css_iter
+        self.bk.css_iter.side_effect = lambda: bk_css_iter([('css2', 'href2')])
         self.assertRaises(core.CSSParsingError, self.cssparser.parse_css, self.bk)
 
     def test_parse_style_ok(self):
@@ -154,8 +151,7 @@ class XMLParserTest(Parser):
         }
 
     def test_xhtml_parse(self):
-        text_iter = Mock(side_effect=lambda: bk_text_iter([('xhtml1', 'file_href1')]))
-        self.bk.text_iter = text_iter
+        self.bk.text_iter.side_effect = lambda: bk_text_iter([('xhtml1', 'file_href1')])
         collector = core.parse_xhtml(self.bk, self.cssparser, self.css_collector, self.prefs)
         self.assertEqual(
             collector.class_names,
@@ -198,8 +194,7 @@ class XMLParserTest(Parser):
                     self.assertEqual(v, set())
 
     def test_xhtml_parse_unselected_file(self):
-        text_iter = Mock(side_effect=lambda: bk_text_iter([('xhtml1', 'file_href1')]))
-        self.bk.text_iter = text_iter
+        self.bk.text_iter.side_effect = lambda: bk_text_iter([('xhtml1', 'file_href1')])
         self.prefs['parse_only_selected_files'] = True
         collector = core.parse_xhtml(self.bk, self.cssparser, self.css_collector, self.prefs)
         self.assertEqual(collector.class_names, set())
@@ -216,14 +211,10 @@ class XMLParserTest(Parser):
                 self.assertEqual(v, set())
 
     def test_xml_parse(self):
-        manifest_iter = Mock(
-            side_effect=lambda: bk_manifest_iter(
-                [('media_overlays1', 'file_href1', 'application/smil+xml')]
-            )
+        self.bk.manifest_iter.side_effect = lambda: bk_manifest_iter(
+            [('media_overlays1', 'file_href1', 'application/smil+xml')]
         )
-        text_iter = Mock(side_effect=lambda: bk_text_iter([]))
-        self.bk.manifest_iter = manifest_iter
-        self.bk.text_iter = text_iter
+        self.bk.text_iter.side_effect = lambda: bk_text_iter([])
         collector = core.XHTMLAttributes()
         core.parse_xml(self.bk, collector, self.prefs)
         self.assertEqual(collector.class_names, set())
