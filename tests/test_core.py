@@ -1,20 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-import sys
+
 import unittest
 from unittest.mock import Mock, MagicMock, patch
 
-sys.path.insert(1, '/usr/local/share/sigil/plugin_launchers/python')
-sys.path.insert(1, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'cssUndefinedClasses'))
-
-try:
-    os.environ['SigilGumboLibPath']
-except KeyError:
-    os.environ['SigilGumboLibPath'] = '/usr/local/lib/sigil/libsigilgumbo.so'  # std linux path
-
-from cssUndefinedClasses import core
+import core
 
 #import sigil_gumbo_bs4_adapter as gumbo_bs4
 from bookcontainer import BookContainer
