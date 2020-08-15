@@ -6,34 +6,13 @@ import unittest
 from unittest.mock import Mock, MagicMock, patch
 
 import core
+from tests import resources
 
 #import sigil_gumbo_bs4_adapter as gumbo_bs4
 from bookcontainer import BookContainer
 
 
-class CSSParserTest(unittest.TestCase):
-
-    css = {
-        'css1':
-'''
-.aclass, .anotherclass {}
-#anid {}
-*[class=equalclass] {}
-*[class="equal class"] {}
-h1.aclass + p.yetanotherclass[class|=startorequal] {}
-*[class~=wholenameclass] {}
-*[class^=startswithclass] {}
-*[class^='startswith class'] {}
-*[class$=endswithclass] {}
-*[class$="ends with class"] {}
-*[class*=containsclass] {}
-*[class*='contains class'] {}
-''',
-        'css2':
-'''
-a.gibb,{}
-'''
-    }
+class Parser(unittest.TestCase):
 
     def setUp(self):
         self.bk = Mock(spec_set=BookContainer)
@@ -42,8 +21,14 @@ a.gibb,{}
         self.read_css_patch = patch('utils.read_css', side_effect=read_css)
         self.read_css = self.read_css_patch.start()
 
+        read_file = Mock(side_effect=bk_readfile)
+        self.bk.readfile = read_file
+
     def tearDown(self):
         self.read_css_patch.stop()
+
+
+class CSSParserTest(Parser):
 
     def test_parse_css_ok(self):
         css_iter = Mock(side_effect=lambda: bk_css_iter([('css1', 'href1')]))
@@ -66,7 +51,7 @@ a.gibb,{}
         self.assertRaises(core.CSSParsingError, self.cssparser.parse_css, self.bk)
 
     def test_parse_style_ok(self):
-        collector = self.cssparser.parse_style(CSSParserTest.css['css1'], filename='css1')
+        collector = self.cssparser.parse_style(resources.css_samples['css1'], filename='css1')
         self.assertEqual(
             collector.classes['classes'],
             {'aclass', 'anotherclass', 'yetanotherclass', 'wholenameclass'}
@@ -97,7 +82,7 @@ a.gibb,{}
             core.CSSParsingError,
             r'^Error in style element of css2.xhtml',
             self.cssparser.parse_style,
-            CSSParserTest.css['css2'], filename='css2.xhtml'
+            resources.css_samples['css2'], filename='css2.xhtml'
         )
 
     def test_parse_selector_without_classes_nor_ids(self):
@@ -157,12 +142,121 @@ a.gibb,{}
                     self.assertEqual(v, set())
 
 
+class XMLParserTest(Parser):
+
+    def setUp(self):
+        super().setUp()
+        self.css_collector = core.CSSAttributes()
+        self.prefs = {
+            'parse_only_selected_files': False,
+            'selected_files': [],
+            'fragid_container_attrs': []
+        }
+
+    def test_xhtml_parse(self):
+        text_iter = Mock(side_effect=lambda: bk_text_iter([('xhtml1', 'file_href1')]))
+        self.bk.text_iter = text_iter
+        collector = core.parse_xhtml(self.bk, self.cssparser, self.css_collector, self.prefs)
+        self.assertEqual(
+            collector.class_names,
+            {'aclass', 'anotherclass', 'undefinedclass', 'definedinstyleclass'}
+        )
+        self.assertEqual(
+            collector.literal_class_values,
+            {'aclass anotherclass', 'undefinedclass definedinstyleclass', 'aclass'}
+        )
+        self.assertEqual(
+            collector.id_values,
+            {'anid', 'undefinedid', 'someanchor'}
+        )
+        self.assertEqual(
+            collector.fragment_identifier,
+            {'someanchor'}
+        )
+        self.assertEqual(
+            collector.info_class_names,
+            {
+                'aclass': {'file_href1': 2},
+                'anotherclass': {'file_href1': 1},
+                'undefinedclass': {'file_href1': 1},
+                'definedinstyleclass': {'file_href1': 1}
+            }
+        )
+        self.assertEqual(
+            collector.info_id_values,
+            {
+                'anid': {'file_href1': 1},
+                'undefinedid': {'file_href1': 1},
+                'someanchor': {'file_href1': 1}
+            }
+        )
+        for k, v in self.css_collector.classes.items():
+            with self.subTest(type='classes', key=k, val=v):
+                if k == 'classes':
+                    self.assertEqual(v, {'definedinstyleclass'})
+                else:
+                    self.assertEqual(v, set())
+
+    def test_xhtml_parse_unselected_file(self):
+        text_iter = Mock(side_effect=lambda: bk_text_iter([('xhtml1', 'file_href1')]))
+        self.bk.text_iter = text_iter
+        self.prefs['parse_only_selected_files'] = True
+        collector = core.parse_xhtml(self.bk, self.cssparser, self.css_collector, self.prefs)
+        self.assertEqual(collector.class_names, set())
+        self.assertEqual(collector.literal_class_values, set())
+        self.assertEqual(collector.id_values, set())
+        self.assertEqual(collector.fragment_identifier, {'someanchor'})
+        self.assertEqual(collector.info_class_names, {})
+        self.assertEqual(collector.info_id_values, {})
+        for k, v in self.css_collector.classes.items():
+            with self.subTest(type='classes', key=k, val=v):
+                self.assertEqual(v, set())
+        for k, v in self.css_collector.ids.items():
+            with self.subTest(type='ids', key=k, val=v):
+                self.assertEqual(v, set())
+
+    def test_xml_parse(self):
+        manifest_iter = Mock(
+            side_effect=lambda: bk_manifest_iter(
+                [('media_overlays1', 'file_href1', 'application/smil+xml')]
+            )
+        )
+        text_iter = Mock(side_effect=lambda: bk_text_iter([]))
+        self.bk.manifest_iter = manifest_iter
+        self.bk.text_iter = text_iter
+        collector = core.XHTMLAttributes()
+        core.parse_xml(self.bk, collector, self.prefs)
+        self.assertEqual(collector.class_names, set())
+        self.assertEqual(collector.literal_class_values, set())
+        self.assertEqual(collector.id_values, set())
+        self.assertEqual(
+            collector.fragment_identifier,
+            {'ch3_figure1', 'ch3_figure1_title', 'ch3_figure1_caption', 'ch3_figure1_text1', 'ch3_figure1_text2'}
+        )
+        self.assertEqual(collector.info_class_names, {})
+        self.assertEqual(collector.info_id_values, {})
+
+
 # mock callbacks
 
 def read_css(bk, css_id):
-    return CSSParserTest.css[css_id]
+    return resources.css_samples[css_id]
+
+
+def bk_readfile(file_id):
+    return resources.markup_samples[file_id]
 
 
 def bk_css_iter(css_list):
     for id_, href in css_list:
         yield id_, href
+
+
+def bk_text_iter(text_list):
+    for id_, href in text_list:
+        yield id_, href
+
+
+def bk_manifest_iter(text_list):
+    for id_, href, mime in text_list:
+        yield id_, href, mime
