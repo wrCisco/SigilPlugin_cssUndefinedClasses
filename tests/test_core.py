@@ -100,6 +100,64 @@ a.gibb,{}
             CSSParserTest.css['css2'], filename='css2.xhtml'
         )
 
+    def test_parse_selector_without_classes_nor_ids(self):
+        collector = core.CSSAttributes()
+        for k, v in collector.classes.items():
+            with self.subTest(type='classes', key=k, val=v):
+                self.assertEqual(v, set())
+        for k, v in collector.ids.items():
+            with self.subTest(type='ids', key=k, val=v):
+                self.assertEqual(v, set())
+        self.cssparser._parse_selector('p > p[title=atitle] :not(span)', collector)
+        for k, v in collector.classes.items():
+            with self.subTest(type='classes', key=k, val=v):
+                self.assertEqual(v, set())
+        for k, v in collector.ids.items():
+            with self.subTest(type='ids', key=k, val=v):
+                self.assertEqual(v, set())
+
+    def test_parse_selector_class_selector(self):
+        collector = core.CSSAttributes()
+        self.cssparser._parse_selector('.aclass, p.anotherclass, div.aclass', collector)
+        for k, v in collector.classes.items():
+            with self.subTest(type='classes', key=k, val=v):
+                if k == 'classes':
+                    self.assertEqual(v, {'aclass', 'anotherclass'})
+                else:
+                    self.assertEqual(v, set())
+
+    def test_parse_selector_id_selector(self):
+        collector = core.CSSAttributes()
+        self.cssparser._parse_selector('#anid, a#anotherid, h2#anid', collector)
+        for k, v in collector.ids.items():
+            with self.subTest(type='ids', key=k, val=v):
+                if k == 'equal':
+                    self.assertEqual(v, {'anid', 'anotherid'})
+                else:
+                    self.assertEqual(v, set())
+
+    def test_parse_selector_attribute_selector(self):
+        collector = core.CSSAttributes()
+        self.cssparser._parse_selector(
+            r'p[class~=aclass][class~=anotherclass], div[id*=an\ id][class=a\ class]', collector
+        )
+        for k, v in collector.classes.items():
+            with self.subTest(type='classes', key=k, val=v):
+                if k == 'classes':
+                    self.assertEqual(v, {'aclass', 'anotherclass'})
+                elif k == 'equal':
+                    self.assertEqual(v, {'a class'})
+                else:
+                    self.assertEqual(v, set())
+        for k, v in collector.ids.items():
+            with self.subTest(type='ids', key=k, val=v):
+                if k == 'contains':
+                    self.assertEqual(v, {'an id'})
+                else:
+                    self.assertEqual(v, set())
+
+
+# mock callbacks
 
 def read_css(bk, css_id):
     return CSSParserTest.css[css_id]
