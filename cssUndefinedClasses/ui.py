@@ -30,7 +30,7 @@ import core
 import utils
 
 
-class WidgetFixture(tk.BaseWidget):
+class WidgetMixin(tk.BaseWidget):
 
     def bind_to_mousewheel(self, widget):
         if sys.platform.startswith("linux"):
@@ -54,7 +54,7 @@ class WidgetFixture(tk.BaseWidget):
         widget.bindtags(tuple(bindtags))
 
 
-class MainWindow(tk.Tk, WidgetFixture):
+class MainWindow(tk.Tk, WidgetMixin):
 
     def __init__(self, bk):
         self.bk = bk
@@ -497,7 +497,7 @@ class MainWindow(tk.Tk, WidgetFixture):
         )
 
 
-class PrefsDialog(tk.Toplevel, WidgetFixture):
+class PrefsDialog(tk.Toplevel, WidgetMixin):
 
     def __init__(self, parent=None, bk=None, prefs=None):
         self.bk = bk
