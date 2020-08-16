@@ -1,5 +1,6 @@
 *~
 __pycache__/
+*.pyc
 
 # From https://gist.github.com/octocat/9257657
 # Compiled source #
