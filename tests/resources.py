@@ -27,6 +27,7 @@ a.gibb,{}
 markup_samples = {
     'xhtml1':
 '''
+<?xml version="1.0" encoding="UTF-8" ?>
 <html>
   <head>
     <style>
@@ -41,6 +42,43 @@ markup_samples = {
   </body>
 </html>
 ''',
+
+    'xhtml1_before_deletions':
+'''
+<?xml version="1.0" encoding="utf-8" ?>
+<html>
+  <head>
+    <style>
+      .definedinstyleclass {}
+    </style>
+  </head>
+  <body>
+    <p class="aclass anotherclass">first <a href="section0001.xhtml#someanchor" id="anid">par</a></p>
+    <p class="undefinedclass definedinstyleclass">second par</p>
+    <p id="undefinedid">third par</p>
+    <p class="aclass"><a id="someanchor">anchor</a></p>
+  </body>
+</html>
+''',
+
+    'xhtml1_after_deletions':
+'''
+<?xml version="1.0" encoding="utf-8" ?>
+<html>
+  <head>
+    <style>
+      .definedinstyleclass {}
+    </style>
+  </head>
+  <body>
+    <p class="aclass anotherclass">first <a href="section0001.xhtml#someanchor" id="anid">par</a></p>
+    <p class="definedinstyleclass">second par</p>
+    <p>third par</p>
+    <p class="aclass"><a id="someanchor">anchor</a></p>
+  </body>
+</html>
+''',
+
     'media_overlays1':
 '''
 <smil xmlns="http://www.w3.org/ns/SMIL" xmlns:epub="http://www.idpf.org/2007/ops" version="3.0">

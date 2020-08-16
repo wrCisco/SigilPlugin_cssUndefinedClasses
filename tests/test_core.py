@@ -22,6 +22,7 @@ class Parser(unittest.TestCase):
         self.read_css = self.read_css_patch.start()
 
         self.bk.readfile = Mock(side_effect=bk_readfile)
+        self.bk.writefile = Mock(side_effect=bk_writefile)
 
     def tearDown(self):
         self.read_css_patch.stop()
@@ -227,6 +228,62 @@ class XMLParserTest(Parser):
         self.assertEqual(collector.info_class_names, {})
         self.assertEqual(collector.info_id_values, {})
 
+    def test_match_attribute_selectors_classes(self):
+        self.css_collector.classes = {
+            'equal': {'some classes', 'some different classes'},
+            'equal_or_startswith_and_next_is_dash': {'strangeone"'},
+            'startswith': {'numberedone-', 'aprefix'},
+            'endswith': {'asuffix'},
+            'contains': {'ch_red'}
+        }
+        xhtml_collector = core.XHTMLAttributes()
+        xhtml_collector.literal_class_values = {
+            'some classes',
+            'some unreferenced classes',
+            'aprefixedclass',
+            'anotherprefix',
+            'classwithasuffix',
+            'classwithanothersuffix',
+            'strangeone&quot;'
+        }
+        attrs_to_delete = core.match_attribute_selectors(
+            self.css_collector.classes, xhtml_collector.literal_class_values
+        )
+        self.assertEqual(
+            attrs_to_delete,
+            {'some unreferenced classes', 'anotherprefix', 'classwithanothersuffix'}
+        )
+
+    def test_match_attribute_selectors_ids(self):
+        self.css_collector.ids = {
+            'equal': {'page1', 'page2', 'page3', 'page4', 'page5', 'page6', 'page7'},
+            'equal_or_startswith_and_next_is_dash': set(),
+            'startswith': {'chapter0'},
+            'endswith': set(),
+            'contains': set()
+        }
+        xhtml_collector = core.XHTMLAttributes()
+        xhtml_collector.id_values = {
+            'page1', 'page2', 'page3', 'page10', 'chapter01', 'chapter02', 'chapter03', 'chapter10'
+        }
+        attrs_to_delete = core.match_attribute_selectors(self.css_collector.ids, xhtml_collector.id_values)
+        self.assertEqual(
+            attrs_to_delete,
+            {'page10', 'chapter10'}
+        )
+
+    def test_delete_xhtml_attributes(self):
+        self.bk.text_iter.side_effect = lambda: bk_text_iter([('xhtml1_before_deletions', 'file1')])
+        attrs_to_delete = {
+            'classes': {'undefinedclass'},
+            'ids': {'undefinedid'}
+        }
+        core.delete_xhtml_attributes(self.bk, attrs_to_delete, self.prefs)
+        lines_before = [line.strip() for line in resources.markup_samples['xhtml1_before_deletions'].split('\n') if line]
+        lines_after = [line.strip() for line in resources.markup_samples['xhtml1_after_deletions'].split('\n') if line]
+        for i in range(min(len(lines_before), len(lines_after))):
+            self.assertEqual(lines_before[i], lines_after[i])
+
 
 # mock callbacks
 
@@ -235,6 +292,11 @@ def read_css(bk, css_id):
 
 
 def bk_readfile(file_id):
+    return resources.markup_samples[file_id]
+
+
+def bk_writefile(file_id, text):
+    resources.markup_samples[file_id] = text
     return resources.markup_samples[file_id]
 
 
