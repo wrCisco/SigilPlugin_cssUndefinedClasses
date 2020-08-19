@@ -73,6 +73,11 @@ class MainWindow(tk.Tk, WidgetMixin):
         self.set_fonts()
         self.set_styles()
         self.protocol('WM_DELETE_WINDOW', self.destroy)
+        try:
+            icon = tk.PhotoImage(file=os.path.join(utils.SCRIPT_DIR, 'plugin.png'))
+            self.iconphoto(True, icon)
+        except Exception as E:
+            print("Error in setting plugin's icon: {}".format(E))
 
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
