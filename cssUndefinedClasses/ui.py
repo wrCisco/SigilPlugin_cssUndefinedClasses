@@ -231,11 +231,11 @@ class MainWindow(tk.Tk, WidgetMixin):
 
     def set_fonts(self):
         dummy_label, dummy_text = ttk.Label(self), tk.Text(self)
-        self.bigger_font = tkfont.Font(font=dummy_label['font'])
-        bigger_font_options = self.bigger_font.actual()
-        self.bigger_font.configure(size=bigger_font_options['size'] + 1, weight='bold')
+        self.heading_label_font = tkfont.Font(font=dummy_label['font'])
+        label_font_options = self.heading_label_font.actual()
+        # self.heading_label_font.configure(size=label_font_options['size'], weight='bold')
         self.text_heading_font = tkfont.Font(font=dummy_text['font'])
-        self.text_heading_font.configure(family=bigger_font_options['family'])
+        self.text_heading_font.configure(family=label_font_options['family'])
         dummy_label.destroy()
         dummy_text.destroy()
 
@@ -283,7 +283,7 @@ class MainWindow(tk.Tk, WidgetMixin):
         self.style.configure('Preferences.TCheckbutton', )
         self.style.configure(
             'Top.TLabel',
-            font=self.bigger_font,
+            font=self.heading_label_font,
             padding=20,
             wraplength=self.winfo_width() - 50
         )
@@ -431,7 +431,7 @@ class MainWindow(tk.Tk, WidgetMixin):
         self.ids_text.config(state=tk.NORMAL)
         self.ids_text.insert(
             'insert',
-            'Id found in XHTML without references in CSS nor in fragment identifiers.\n'
+            'Ids found in XHTML without references in CSS nor in fragment identifiers.\n'
             'Select the ones you want to delete:\n',
             'heading'
         )
@@ -476,7 +476,7 @@ class MainWindow(tk.Tk, WidgetMixin):
                 self.ids_text.insert('end', '\n')
                 self.check_undefined_attributes['ids'][id_].set(True)
         else:
-            self.ids_text.insert('end', 'I found no unreferenced id.', 'body')
+            self.ids_text.insert('end', 'I found no unreferenced ids.', 'body')
         self.ids_text.config(state=tk.DISABLED)
 
     def get_prefs(self):
