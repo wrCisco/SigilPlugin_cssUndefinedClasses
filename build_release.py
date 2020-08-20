@@ -103,6 +103,17 @@ def check_files(files: dict) -> None:
 
 def set_zip_path(path, version):
     zip_path = os.path.join(path + '_' + version + '.zip')
+    zip_dirname = os.path.dirname(zip_path)
+    if not os.path.isdir(zip_dirname):
+        try:
+            os.mkdir(zip_dirname)
+        except FileExistsError:
+            print(
+                f'{zip_dirname} already exists and is not a directory.\n'
+                f'Rename it or choose another path for the release.',
+                file=sys.stderr
+            )
+            sys.exit(1)
     if os.path.isfile(zip_path):
         if not confirm_proceed(
             'Destination for the release already present. Shall I overwrite it? (y/n) '
@@ -111,9 +122,19 @@ def set_zip_path(path, version):
     return zip_path
 
 
+def set_project_files():
+    files = {**PROJECT_FILES, **ADD_TO_RELEASE}
+    for f in NOT_RELEASED:
+        try:
+            del files[f]
+        except KeyError:
+            pass
+    return files
+
+
 if __name__ == '__main__':
     args = parse_args()
-    project_files = {**PROJECT_FILES, **ADD_TO_RELEASE}
+    project_files = set_project_files()
     check_files(project_files)
     release_version = set_version(args.version)
     destination = set_zip_path(args.destination, release_version)
