@@ -626,8 +626,9 @@ class PrefsDialog(tk.Toplevel, WidgetMixin):
             self.prefs['parse_only_selected_files'] = True
         else:
             self.prefs['parse_only_selected_files'] = False
+        # reset selected_files in the prefs dictionary before saving: this value doesn't have to be saved permanently
+        self.prefs['selected_files'] = []
         self.bk.savePrefs(self.prefs)
-        # this last value doesn't need to be saved permanently
         selected_files = [self.selected_files_list.get(i) for i in self.selected_files_list.curselection()]
         self.prefs['selected_files'] = selected_files
         self.destroy()
