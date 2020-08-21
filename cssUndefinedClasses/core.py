@@ -42,7 +42,6 @@ class XMLParsingError(Exception):
     pass
 
 
-
 class XHTMLAttributes:
 
     fragid_container_attrs = [
@@ -109,9 +108,41 @@ class CSSAttributes:
 
 
 class CSSParser:
+    """
+    Wrapper around css_parser.CSSParser, with the ability
+    to extract class names and ids from the parsed selectors,
+    plus some helper functions for this plugin.
+    """
 
-    def __init__(self) -> None:
+    # These 'ident_token' patterns don't consider unicode escape
+    # sequences: they are already resolved by the real css parser.
+    full_ident_token = re.compile(
+        r'''
+        -?                           # optional initial dash
+        (?:\\[^a-fA-F0-9]|           # ident start char: it can be an escaped character
+        [a-zA-Z_]|                   # or an ascii letter or an underscore
+        [^\u0000-\u007f])            # or any non-ascii character.
+        (?:\\[^a-fA-F0-9]|           # Other chars of the ident:
+        [a-zA-Z0-9_-]|               # same as start char, but decimal digits
+        [^\u0000-\u007f])*           # and dashes are allowed too.
+        ''',
+        re.VERBOSE
+    )
+    simpler_ident_token = re.compile(
+        r'''
+        (?:\\[^a-fA-F0-9]|           # Chars of the simpler ident token:
+        [a-zA-Z0-9_-]|               # same as full ident, but decimal digits
+        [^\u0000-\u007f])+           # and dashes are allowed also at the beginning.
+        ''',
+        re.VERBOSE
+    )
+
+    def __init__(self, accept_invalid_tokens=True) -> None:
         self.cssparser = css_parser.CSSParser(raiseExceptions=True, validate=False)
+        if accept_invalid_tokens:
+            self.ident_token = self.simpler_ident_token
+        else:
+            self.ident_token = self.full_ident_token
 
     def parse_css(self, bk, collector: CSSAttributes = None) -> CSSAttributes:
         """
@@ -144,26 +175,11 @@ class CSSParser:
                 self._parse_selector(selector.selectorText, collector)
         return collector
 
-    @staticmethod
-    def _parse_selector(selector: str, collector: CSSAttributes) -> None:
+    def _parse_selector(self, selector: str, collector: CSSAttributes) -> None:
         """
         Parse a selector and extract all class and id names,
         which are used to populate classes and ids dictionaries of the collector.
         """
-        # This 'ident_token' pattern doesn't consider unicode escape
-        # sequences: they are already resolved by the css parser.
-        ident_token = re.compile(
-            r'''
-            -?                           # optional initial dash
-            (?:\\[^a-fA-F0-9]|           # ident start char: it can be an escaped character
-            [a-zA-Z_]|                   # or an ascii letter or an underscore
-            [^\u0000-\u007f])            # or any non-ascii character.
-            (?:\\[^a-fA-F0-9]|           # Other chars of the ident:
-            [a-zA-Z0-9_-]|               # same as start char, but decimal digits
-            [^\u0000-\u007f])*           # and dashes are allowed too.
-            ''',
-            re.VERBOSE
-        )
         i = 0
         while i < len(selector):
             start_i = i
@@ -171,14 +187,14 @@ class CSSParser:
 
             # class selector
             if char == '.' and (i == 0 or selector[i - 1] != '\\'):
-                class_match = ident_token.match(selector[i + 1:])
+                class_match = self.ident_token.match(selector[i + 1:])
                 if class_match:
                     collector.classes['classes'].add(utils.css_remove_escapes(class_match.group()))
                     i += class_match.end() + 1
 
             # id selector
             elif char == '#' and (i == 0 or selector[i - 1] != '\\'):
-                id_match = ident_token.match(selector[i + 1:])
+                id_match = self.ident_token.match(selector[i + 1:])
                 if id_match:
                     collector.ids['equal'].add(utils.css_remove_escapes(id_match.group()))
                     i += id_match.end() + 1

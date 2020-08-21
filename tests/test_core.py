@@ -139,6 +139,44 @@ class CSSParserTest(Parser):
                 else:
                     self.assertEqual(v, set())
 
+    def test_parse_selector_accept_invalid_ident_token(self):
+        '''
+        The cssparser recognizes also identifiers that start with
+        a digit or two dashes in class and id selectors.
+        '''
+        collector = core.CSSAttributes()
+        self.cssparser._parse_selector(
+            r'.1aclass.--aclass#1anid #123 #--__-321', collector
+        )
+        for k, v in collector.classes.items():
+            with self.subTest(type='classes', key=k, val=v):
+                if k == 'classes':
+                    self.assertEqual(v, {'1aclass', '--aclass'})
+                else:
+                    self.assertEqual(v, set())
+        for k, v in collector.ids.items():
+            with self.subTest(type='ids', key=k, val=v):
+                if k == 'equal':
+                    self.assertEqual(v, {'1anid', '123', '--__-321'})
+                else:
+                    self.assertEqual(v, set())
+
+    def test_parse_selector_dont_accept_invalid_ident_token(self):
+        collector = core.CSSAttributes()
+        strict_parser = core.CSSParser(accept_invalid_tokens=False)
+        strict_parser._parse_selector(
+            r'.valid-class.--_invalid-class.1invalid-class#1invalid-id', collector
+        )
+        for k, v in collector.classes.items():
+            with self.subTest(type='classes', key=k, val=v):
+                if k == 'classes':
+                    self.assertEqual(v, {'valid-class'})
+                else:
+                    self.assertEqual(v, set())
+        for k, v in collector.ids.items():
+            with self.subTest(type='ids', key=k, val=v):
+                self.assertEqual(v, set())
+
 
 class XMLParserTest(Parser):
 
