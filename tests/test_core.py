@@ -2,6 +2,22 @@
 # -*- coding: utf-8 -*-
 
 
+# Copyright (c) 2020 Francesco Martini
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 import unittest
 from unittest.mock import Mock, patch
 
@@ -85,9 +101,11 @@ class CSSParserTest(Parser):
 
     def test_parse_selector_without_classes_nor_ids(self):
         collector = core.CSSAttributes()
+        self.assertNotEqual(collector.classes, {})
         for k, v in collector.classes.items():
             with self.subTest(type='classes', key=k, val=v):
                 self.assertEqual(v, set())
+        self.assertNotEqual(collector.ids, {})
         for k, v in collector.ids.items():
             with self.subTest(type='ids', key=k, val=v):
                 self.assertEqual(v, set())
@@ -102,6 +120,7 @@ class CSSParserTest(Parser):
     def test_parse_selector_class_selector(self):
         collector = core.CSSAttributes()
         self.cssparser._parse_selector('.aclass, p.anotherclass, div.aclass', collector)
+        self.assertNotEqual(collector.classes, {})
         for k, v in collector.classes.items():
             with self.subTest(type='classes', key=k, val=v):
                 if k == 'classes':
@@ -112,6 +131,7 @@ class CSSParserTest(Parser):
     def test_parse_selector_id_selector(self):
         collector = core.CSSAttributes()
         self.cssparser._parse_selector('#anid, a#anotherid, h2#anid', collector)
+        self.assertNotEqual(collector.ids, {})
         for k, v in collector.ids.items():
             with self.subTest(type='ids', key=k, val=v):
                 if k == 'equal':
@@ -124,6 +144,7 @@ class CSSParserTest(Parser):
         self.cssparser._parse_selector(
             r'p[class~=aclass][class~=anotherclass], div[id*=an\ id][class=a\ class]', collector
         )
+        self.assertNotEqual(collector.classes, {})
         for k, v in collector.classes.items():
             with self.subTest(type='classes', key=k, val=v):
                 if k == 'classes':
@@ -132,6 +153,7 @@ class CSSParserTest(Parser):
                     self.assertEqual(v, {'a class'})
                 else:
                     self.assertEqual(v, set())
+        self.assertNotEqual(collector.ids, {})
         for k, v in collector.ids.items():
             with self.subTest(type='ids', key=k, val=v):
                 if k == 'contains':
@@ -140,20 +162,22 @@ class CSSParserTest(Parser):
                     self.assertEqual(v, set())
 
     def test_parse_selector_accept_invalid_ident_token(self):
-        '''
+        """
         The cssparser recognizes also identifiers that start with
         a digit or two dashes in class and id selectors.
-        '''
+        """
         collector = core.CSSAttributes()
         self.cssparser._parse_selector(
             r'.1aclass.--aclass#1anid #123 #--__-321', collector
         )
+        self.assertNotEqual(collector.classes, {})
         for k, v in collector.classes.items():
             with self.subTest(type='classes', key=k, val=v):
                 if k == 'classes':
                     self.assertEqual(v, {'1aclass', '--aclass'})
                 else:
                     self.assertEqual(v, set())
+        self.assertNotEqual(collector.ids, {})
         for k, v in collector.ids.items():
             with self.subTest(type='ids', key=k, val=v):
                 if k == 'equal':
@@ -167,12 +191,14 @@ class CSSParserTest(Parser):
         strict_parser._parse_selector(
             r'.valid-class.--_invalid-class.1invalid-class#1invalid-id', collector
         )
+        self.assertNotEqual(collector.classes, {})
         for k, v in collector.classes.items():
             with self.subTest(type='classes', key=k, val=v):
                 if k == 'classes':
                     self.assertEqual(v, {'valid-class'})
                 else:
                     self.assertEqual(v, set())
+        self.assertNotEqual(collector.ids, {})
         for k, v in collector.ids.items():
             with self.subTest(type='ids', key=k, val=v):
                 self.assertEqual(v, set())
@@ -225,6 +251,7 @@ class XMLParserTest(Parser):
                 'someanchor': {'file_href1': 1}
             }
         )
+        self.assertNotEqual(self.css_collector.classes, {})
         for k, v in self.css_collector.classes.items():
             with self.subTest(type='classes', key=k, val=v):
                 if k == 'classes':
@@ -242,9 +269,11 @@ class XMLParserTest(Parser):
         self.assertEqual(collector.fragment_identifier, {'someanchor'})
         self.assertEqual(collector.info_class_names, {})
         self.assertEqual(collector.info_id_values, {})
+        self.assertNotEqual(self.css_collector.classes, {})
         for k, v in self.css_collector.classes.items():
             with self.subTest(type='classes', key=k, val=v):
                 self.assertEqual(v, set())
+        self.assertNotEqual(self.css_collector.ids, {})
         for k, v in self.css_collector.ids.items():
             with self.subTest(type='ids', key=k, val=v):
                 self.assertEqual(v, set())
