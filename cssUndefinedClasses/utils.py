@@ -30,6 +30,16 @@ import inspect
 SCRIPT_DIR = os.path.normpath(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))))
 
 
+def tk_iterate_children(parent):
+    """
+    Yields every descendant of parent widget.
+    """
+    for child in parent.winfo_children():
+        yield child
+        for grandchild in tk_iterate_children(child):
+            yield grandchild
+
+
 def style_rules(rules_collector):
     """
     Yields style rules in a css parsed with css_parser/cssutils,
