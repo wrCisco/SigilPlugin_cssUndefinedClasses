@@ -72,12 +72,14 @@ class MainWindow(tk.Tk, WidgetMixin):
         self.set_geometry()
         self.set_fonts()
         self.set_styles()
-        self.protocol('WM_DELETE_WINDOW', self.destroy)
+        self.is_running = True
+        self.protocol('WM_DELETE_WINDOW', self.close)
         try:
             icon = tk.PhotoImage(file=os.path.join(utils.SCRIPT_DIR, 'plugin.png'))
             self.iconphoto(True, icon)
         except Exception as E:
-            print("Error in setting plugin's icon: {}".format(E))
+            # print("Error in setting plugin's icon: {}".format(E))
+            pass
 
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
@@ -188,12 +190,12 @@ class MainWindow(tk.Tk, WidgetMixin):
         self.lower_frame.grid(row=3, column=0, sticky='nsew')
         self.prefs_button = ttk.Button(self.lower_frame, text='Preferences', command=self.prefs_dlg)
         self.prefs_button.grid(row=0, column=0, sticky='nw')
-        self.stop_button = ttk.Button(self.lower_frame, text='Cancel', command=self.destroy)
+        self.stop_button = ttk.Button(self.lower_frame, text='Cancel', command=self.close)
         self.stop_button.grid(row=0, column=2, sticky='ne')
         self.start_button = ttk.Button(self.lower_frame, text='Proceed', command=self.start_parsing)
         self.start_button.grid(row=0, column=3, sticky='ne')
-        self.stop_button.bind('<Return>', self.destroy)
-        self.stop_button.bind('<KP_Enter>', self.destroy)
+        self.stop_button.bind('<Return>', self.close)
+        self.stop_button.bind('<KP_Enter>', self.close)
         self.start_button.bind('<Return>', self.start_parsing)
         self.start_button.bind('<KP_Enter>', self.start_parsing)
         self.start_button.focus_set()
@@ -209,6 +211,10 @@ class MainWindow(tk.Tk, WidgetMixin):
         self.mainframe.rowconfigure(2, weight=0)
         self.mainframe.rowconfigure(3, weight=0)
         self.mainframe.columnconfigure(0, weight=1)
+
+    def close(self):
+        self.is_running = False
+        self.destroy()
 
     def set_geometry(self):
         screen_width = self.winfo_screenwidth()
@@ -324,10 +330,10 @@ class MainWindow(tk.Tk, WidgetMixin):
             self.populate_text_widgets(core.find_attributes_to_delete(self.bk, self.prefs))
         except core.CSSParsingError as E:
             msgbox.showerror('Error while parsing stylesheets', '{}\nThe plugin will terminate.'.format(E))
-            self.destroy()
+            self.close()
         except core.XMLParsingError as E:
             msgbox.showerror('Error while parsing an XML or XHTML file', '{}\nThe plugin will terminate.'.format(E))
-            self.destroy()
+            self.close()
         else:
             self.top_label_text.set(
                 'Select classes and ids that you want to remove from your xhtml, '
@@ -353,7 +359,7 @@ class MainWindow(tk.Tk, WidgetMixin):
         # reset selected files on success
         self.prefs['selected_files'] = []
         self.bk.savePrefs(self.prefs)
-        self.destroy()
+        self.close()
 
     def toggle_all_classes(self):
         if self.toggle_classes.get() == 1:
