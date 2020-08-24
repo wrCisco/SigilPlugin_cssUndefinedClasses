@@ -21,7 +21,7 @@
 
 
 import unittest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch
 import tkinter as tk
 from tkinter import ttk
 
@@ -68,11 +68,11 @@ class MainWindowTestCase(unittest.TestCase):
                 'anotherid': {'Text/Section0001.xhtml': 1}
             }
         }
-        core.find_attributes_to_delete = Mock(return_value=attributes)
-        self.root.start_button.event_generate('<<Invoke>>')
-        # self.root.start_button.event_generate('<Button-1>')
-        # self.root.start_button.event_generate('<ButtonRelease-1>')
-        self.pump_events()
+        with patch('core.find_attributes_to_delete', return_value=attributes):
+            self.root.start_button.event_generate('<<Invoke>>')
+            # self.root.start_button.event_generate('<Button-1>')
+            # self.root.start_button.event_generate('<ButtonRelease-1>')
+            self.pump_events()
         self.assertNotEqual(self.root.check_undefined_attributes['classes'], {})
         for k, v in self.root.check_undefined_attributes['classes'].items():
             with self.subTest(type='classes', key=k, val=v):
@@ -108,11 +108,11 @@ class MainWindowTestCase(unittest.TestCase):
                 self.assertIsInstance(v, tk.BooleanVar)
                 self.assertEqual(v.get(), True)
 
-        core.delete_xhtml_attributes = Mock()
-        self.root.start_button.event_generate('<<Invoke>>')
-        # self.root.start_button.event_generate('<Button-1>')
-        # self.root.start_button.event_generate('<ButtonRelease-1>')
-        self.pump_events()
+        with patch('core.delete_xhtml_attributes'):
+            self.root.start_button.event_generate('<<Invoke>>')
+            # self.root.start_button.event_generate('<Button-1>')
+            # self.root.start_button.event_generate('<ButtonRelease-1>')
+            self.pump_events()
         self.assertEqual(self.root.undefined_attributes['classes'], {'aclass'})
         self.assertEqual(self.root.undefined_attributes['ids'], {'anid', 'anotherid'})
         self.assertFalse(self.root.is_running)
