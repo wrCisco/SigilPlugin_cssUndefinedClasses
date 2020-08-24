@@ -31,14 +31,17 @@ from bookcontainer import BookContainer
 class Parser(unittest.TestCase):
 
     def setUp(self):
-        self.bk = Mock(spec_set=BookContainer)
         self.cssparser = core.CSSParser()
+
+        self.bk = Mock(spec_set=BookContainer)
+        self.bk.readfile.side_effect = bk_readfile
+        self.bk.writefile.side_effect = bk_writefile
 
         self.read_css_patch = patch('utils.read_css', side_effect=read_css)
         self.read_css = self.read_css_patch.start()
 
-        self.bk.readfile = Mock(side_effect=bk_readfile)
-        self.bk.writefile = Mock(side_effect=bk_writefile)
+        # self.bk.readfile = Mock(side_effect=bk_readfile)
+        # self.bk.writefile = Mock(side_effect=bk_writefile)
 
     def tearDown(self):
         self.read_css_patch.stop()
@@ -380,3 +383,7 @@ def bk_text_iter(text_list):
 def bk_manifest_iter(text_list):
     for id_, href, mime in text_list:
         yield id_, href, mime
+
+
+if __name__ == '__main__':
+    unittest.main()
