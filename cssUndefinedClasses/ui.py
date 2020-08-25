@@ -108,11 +108,11 @@ class MainWindow(tk.Tk, WidgetMixin):
         self.panedwindow.add(self.ids_frame, weight=1)
         self.classes_frame.bind(
             '<Configure>',
-            lambda event: self.update_paned_wraplength(event, 'Classes')
+            lambda event: self.update_paned_wraplength(event, 'Classes.InText')
         )
         self.ids_frame.bind(
             '<Configure>',
-            lambda event: self.update_paned_wraplength(event, 'Ids')
+            lambda event: self.update_paned_wraplength(event, 'Ids.InText')
         )
 
         self.scroll_classes_list = ttk.Scrollbar(self.classes_frame, orient=tk.VERTICAL)
@@ -125,7 +125,8 @@ class MainWindow(tk.Tk, WidgetMixin):
             highlightthickness=1,
             padx=0, pady=0,
             relief=tk.FLAT,
-            font=self.text_heading_font
+            font=self.text_heading_font,
+            wrap=tk.WORD
         )
         self.classes_text.tag_config(
             'heading',
@@ -155,7 +156,8 @@ class MainWindow(tk.Tk, WidgetMixin):
             highlightthickness=1,
             padx=0, pady=0,
             relief=tk.FLAT,
-            font=self.text_heading_font
+            font=self.text_heading_font,
+            wrap=tk.WORD
         )
         self.ids_text.tag_config(
             'heading',
@@ -261,32 +263,24 @@ class MainWindow(tk.Tk, WidgetMixin):
         fg = dummy_text['foreground']
         dummy_text.destroy()
         self.style.configure(
-            'Classes.TCheckbutton',
+            'InText.TCheckbutton',
             background=bg,
-            foreground=fg,
+            foreground=fg
+        )
+        self.style.configure(
+            'Classes.InText.TCheckbutton',
             wraplength=self.winfo_width() // 2 - 50
         )
         self.style.configure(
-            'Ids.TCheckbutton',
-            background=bg,
-            foreground=fg,
+            'Ids.InText.TCheckbutton',
             wraplength=self.winfo_width() // 2 - 50
         )
-        try:
-            if self.bk.colorMode() == 'dark' and not os.environ.get('FORCE_SIGIL_DARKMODE_PALETTE'):
-                self.style.configure(
-                    'Hover.Classes.TCheckbutton',
-                    background=fg,
-                    foreground=bg
-                )
-                self.style.configure(
-                    'Hover.Ids.TCheckbutton',
-                    background=fg,
-                    foreground=bg
-                )
-        except AttributeError:
-            pass
-        self.style.configure('Preferences.TCheckbutton', )
+        if self.bk.colorMode() == 'dark':
+            self.style.map(
+                'InText.TCheckbutton',
+                background=[('hover', fg)],
+                foreground=[('hover', bg)]
+            )
         self.style.configure(
             'Top.TLabel',
             font=self.heading_label_font,
@@ -299,24 +293,14 @@ class MainWindow(tk.Tk, WidgetMixin):
             wraplength=self.winfo_width() - 50
         )
 
-    def mouse_hover_checkbutton(self, event):
-        event.widget.config(style='Hover.{}'.format(event.widget['style']))
-
-    def mouse_leave_checkbutton(self, event):
-        if event.widget['style'].startswith('Hover.'):
-            style = event.widget['style'][6:]
-        else:
-            style = event.widget['style']
-        event.widget.config(style=style)
-
     def update_full_wraplength(self, event):
         self.style.configure(
             'Top.TLabel',
-            wraplength=event.width - 40
+            wraplength=event.width - 50
         )
         self.style.configure(
             'Warning.TLabel',
-            wraplength=event.width - 40
+            wraplength=event.width - 50
         )
 
     def update_paned_wraplength(self, event, classname):
@@ -401,11 +385,9 @@ class MainWindow(tk.Tk, WidgetMixin):
                 onvalue=True, offvalue=False,
                 command=self.toggle_all_classes,
                 cursor="arrow",
-                style='Classes.TCheckbutton'
+                style='Classes.InText.TCheckbutton'
             )
             self.add_bindtag(self.check_toggle_classes, self.classes_text)
-            self.check_toggle_classes.bind('<Enter>', self.mouse_hover_checkbutton)
-            self.check_toggle_classes.bind('<Leave>', self.mouse_leave_checkbutton)
             self.classes_text.window_create('end', window=self.check_toggle_classes, padx=4, pady=2)
             self.classes_text.insert('end', '\n\n')
             self.toggle_classes.set(True)
@@ -422,11 +404,9 @@ class MainWindow(tk.Tk, WidgetMixin):
                     variable=self.check_undefined_attributes['classes'][class_],
                     onvalue=True, offvalue=False,
                     cursor='arrow',
-                    style='Classes.TCheckbutton'
+                    style='Classes.InText.TCheckbutton'
                 )
                 self.add_bindtag(class_checkbutton, self.classes_text)
-                class_checkbutton.bind('<Enter>', self.mouse_hover_checkbutton)
-                class_checkbutton.bind('<Leave>', self.mouse_leave_checkbutton)
                 self.classes_text.window_create('end', window=class_checkbutton, padx=4, pady=2)
                 self.classes_text.insert('end', '\n')
                 self.check_undefined_attributes['classes'][class_].set(True)
@@ -453,11 +433,9 @@ class MainWindow(tk.Tk, WidgetMixin):
                 onvalue=True, offvalue=False,
                 command=self.toggle_all_ids,
                 cursor="arrow",
-                style='Ids.TCheckbutton'
+                style='Ids.InText.TCheckbutton'
             )
             self.add_bindtag(self.check_toggle_ids, self.ids_text)
-            self.check_toggle_ids.bind('<Enter>', self.mouse_hover_checkbutton)
-            self.check_toggle_ids.bind('<Leave>', self.mouse_leave_checkbutton)
             self.ids_text.window_create('end', window=self.check_toggle_ids, padx=4, pady=2)
             self.ids_text.insert('end', '\n\n')
             self.toggle_ids.set(True)
@@ -473,11 +451,9 @@ class MainWindow(tk.Tk, WidgetMixin):
                     variable=self.check_undefined_attributes['ids'][id_],
                     onvalue=True, offvalue=False,
                     cursor='arrow',
-                    style='Ids.TCheckbutton'
+                    style='Ids.InText.TCheckbutton'
                 )
                 self.add_bindtag(id_checkbutton, self.ids_text)
-                id_checkbutton.bind('<Enter>', self.mouse_hover_checkbutton)
-                id_checkbutton.bind('<Leave>', self.mouse_leave_checkbutton)
                 self.ids_text.window_create('end', window=id_checkbutton, padx=4, pady=2)
                 self.ids_text.insert('end', '\n')
                 self.check_undefined_attributes['ids'][id_].set(True)
@@ -533,12 +509,17 @@ class PrefsDialog(tk.Toplevel, WidgetMixin):
             self.update_full_width
         )
 
+        self.master.style.configure(
+            'Preferences.TCheckbutton',
+            wraplength=self.winfo_width() - 45
+        )
         self.parse_only_selected_value = tk.BooleanVar()
         self.parse_only_selected_check = ttk.Checkbutton(
             self.mainframe,
             text='Search for classes and ids to remove only in selected files',
             variable=self.parse_only_selected_value,
-            onvalue=True, offvalue=False
+            onvalue=True, offvalue=False,
+            style='Preferences.TCheckbutton'
         )
         self.parse_only_selected_check.grid(row=0, column=0, sticky='nsew')
         self.selected_files_frame = ttk.Frame(self.mainframe)
@@ -565,7 +546,7 @@ class PrefsDialog(tk.Toplevel, WidgetMixin):
             self.mainframe,
             text='Comma separated list of attributes that will be used to search for fragment identifiers '
                  '(an empty list will default to {}).'.format(', '.join(core.XHTMLAttributes.fragid_container_attrs)),
-            wraplength=self.mainframe.winfo_width() - 10,
+            wraplength=self.mainframe.winfo_width() - 30,
             padding='0 18 0 6'
         )
         self.fragid_attrs_label.grid(row=2, column=0, sticky='nsew')
@@ -640,6 +621,7 @@ class PrefsDialog(tk.Toplevel, WidgetMixin):
         self.destroy()
 
     def update_full_width(self, event=None):
-        self.fragid_attrs_label.configure(wraplength=event.width - 25)
+        self.fragid_attrs_label.configure(wraplength=event.width - 30)
         fragid_entry_width = event.width // self.fragid_font.measure('0')
         self.fragid_attrs_entry.configure(width=fragid_entry_width)
+        self.master.style.configure('Preferences.TCheckbutton', wraplength=event.width - 45)
