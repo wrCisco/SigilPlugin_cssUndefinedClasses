@@ -44,6 +44,17 @@ ADD_TO_RELEASE = {
 NOT_RELEASED = []
 
 
+def add_dir_to_release(dir_name, add_to):
+    for top_dir, dirs, files in os.walk(os.path.join(ROOT_PATH, dir_name)):
+        for file in files:
+            abspath = os.path.join(top_dir, file)
+            add_to[abspath] = os.path.relpath(abspath, ROOT_PATH)
+    return add_to
+
+
+add_dir_to_release('clearlooks', ADD_TO_RELEASE)
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--destination', default=os.path.join(RELEASES_PATH, PROJECT_NAME))

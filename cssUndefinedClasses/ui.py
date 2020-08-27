@@ -248,6 +248,14 @@ class MainWindow(tk.Tk, WidgetMixin):
         dummy_text.destroy()
 
     def set_styles(self):
+        if sys.platform.startswith('linux'):
+            self.tk.eval(f'''
+package ifneeded ttk::theme::clearlooks 0.1 \
+    [list source [file join {os.path.join(utils.SCRIPT_DIR, 'clearlooks')} clearlooks.tcl]]
+'''
+            )
+            self.tk.call('package', 'require', 'ttk::theme::clearlooks', '0.1')
+            self.style.theme_use('clearlooks')
         # text colors and background for text widgets header
         self.text_heading_bg = '#F2F2F2'
         self.text_heading_fg = '#0D0D0D'
