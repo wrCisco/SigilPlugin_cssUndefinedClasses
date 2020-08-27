@@ -625,7 +625,7 @@ class PrefsDialog(tk.Toplevel, WidgetMixin):
                 if name in selected_files_names:
                     self.selected_files_list.selection_set(index)
 
-    def save_and_proceed(self):
+    def save_and_proceed(self, event=None):
         fragid_attrs = self.fragid_attrs_value.get()
         self.prefs['fragid_container_attrs'] = [attr.strip() for attr in fragid_attrs.split(',') if attr]
         if self.parse_only_selected_value.get() == 1:
