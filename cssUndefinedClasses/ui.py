@@ -26,6 +26,8 @@ from tkinter import messagebox as msgbox
 import tkinter.font as tkfont
 from typing import Dict, Set
 
+import regex as re
+
 import core
 import utils
 
@@ -256,20 +258,25 @@ package ifneeded ttk::theme::clearlooks 0.1 \
             )
             self.tk.call('package', 'require', 'ttk::theme::clearlooks', '0.1')
             self.style.theme_use('clearlooks')
-        # text colors and background for text widgets header
-        self.text_heading_bg = '#F2F2F2'
-        self.text_heading_fg = '#0D0D0D'
-        try:
-            if self.bk.colorMode() == 'dark':
-                self.text_heading_bg = '#414649'
-                self.text_heading_fg = '#F2F2F2'
-        except AttributeError:
-            pass
 
         dummy_text = tk.Text(self)
         bg = dummy_text['background']
         fg = dummy_text['foreground']
         dummy_text.destroy()
+        is_dark_text_bg = False
+        if re.fullmatch(r'#[0-9A-Fa-f]{6}', bg):
+            for channel in range(1, len(bg), 2):
+                if int(bg[channel:channel+2], 16) > 96:
+                    break
+            else:  # for-else
+                is_dark_text_bg = True
+        # text colors and background for text widgets header
+        if is_dark_text_bg:
+            self.text_heading_bg = '#414649'
+            self.text_heading_fg = '#F2F2F2'
+        else:
+            self.text_heading_bg = '#F2F2F2'
+            self.text_heading_fg = '#0D0D0D'
         self.style.configure(
             'InText.TCheckbutton',
             background=bg,
@@ -283,11 +290,11 @@ package ifneeded ttk::theme::clearlooks 0.1 \
             'Ids.InText.TCheckbutton',
             wraplength=self.winfo_width() // 2 - 50
         )
-        if self.bk.colorMode() == 'dark':
+        if is_dark_text_bg:
             self.style.map(
                 'InText.TCheckbutton',
-                background=[('hover', fg)],
-                foreground=[('hover', bg)]
+                background=[('hover', self.text_heading_fg)],
+                foreground=[('hover', self.text_heading_bg)]
             )
         self.style.configure(
             'Top.TLabel',
