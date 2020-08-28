@@ -23,12 +23,12 @@ Collection of utilities for Sigil plugins.
 """
 
 import re
-import os
 import inspect
 from tkinter import ttk
+from pathlib import Path
 
 
-SCRIPT_DIR = os.path.normpath(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))))
+SCRIPT_DIR = Path(inspect.getfile(inspect.currentframe())).resolve().parent
 
 
 class ReturnButton(ttk.Button):

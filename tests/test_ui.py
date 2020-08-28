@@ -131,7 +131,7 @@ class MainWindowTestCase(unittest.TestCase):
         prefs = {'tktheme': 'clearlooks'}
         self.root.prefs.get.side_effect = prefs.get
         self.root.prefs.__getitem__.side_effect = prefs.__getitem__
-        root_dir = os.path.dirname(utils.SCRIPT_DIR)
+        root_dir = utils.SCRIPT_DIR.parent
         with patch('ui.utils', SCRIPT_DIR=root_dir):
             self.root.set_theme()
             self.pump_events()

@@ -18,7 +18,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import os
 import sys
 import tkinter as tk
 from tkinter import ttk
@@ -78,7 +77,7 @@ class MainWindow(tk.Tk, WidgetMixin):
         self.is_running = True
         self.protocol('WM_DELETE_WINDOW', self.close)
         try:
-            icon = tk.PhotoImage(file=os.path.join(utils.SCRIPT_DIR, 'plugin.png'))
+            icon = tk.PhotoImage(file=str(utils.SCRIPT_DIR / 'plugin.png'))
             self.iconphoto(True, icon)
         except Exception as E:
             # print("Error in setting plugin's icon: {}".format(E))
@@ -247,7 +246,7 @@ class MainWindow(tk.Tk, WidgetMixin):
             if self.prefs.get('tktheme') == 'clearlooks':
                 self.tk.eval(fr'''
 package ifneeded ttk::theme::clearlooks 0.1 \
-    [list source [file join {os.path.join(utils.SCRIPT_DIR, 'clearlooks')} clearlooks.tcl]]
+    [list source [file join {(utils.SCRIPT_DIR / 'clearlooks').as_posix()} clearlooks.tcl]]
 '''
                 )
                 self.tk.call('package', 'require', 'ttk::theme::clearlooks', '0.1')
