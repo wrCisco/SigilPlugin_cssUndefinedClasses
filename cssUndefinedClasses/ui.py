@@ -73,6 +73,7 @@ class MainWindow(tk.Tk, WidgetMixin):
         self.title("cssUndefinedClasses")
         self.set_geometry()
         self.set_fonts()
+        self.set_theme()
         self.set_styles()
         self.is_running = True
         self.protocol('WM_DELETE_WINDOW', self.close)
@@ -249,16 +250,19 @@ class MainWindow(tk.Tk, WidgetMixin):
         dummy_label.destroy()
         dummy_text.destroy()
 
-    def set_styles(self):
+    def set_theme(self):
         if sys.platform.startswith('linux'):
-            self.tk.eval(f'''
+            if self.prefs.get('tktheme') == 'clearlooks':
+                self.tk.eval(fr'''
 package ifneeded ttk::theme::clearlooks 0.1 \
     [list source [file join {os.path.join(utils.SCRIPT_DIR, 'clearlooks')} clearlooks.tcl]]
 '''
-            )
-            self.tk.call('package', 'require', 'ttk::theme::clearlooks', '0.1')
-            self.style.theme_use('clearlooks')
+                )
+                self.tk.call('package', 'require', 'ttk::theme::clearlooks', '0.1')
+            if self.prefs.get('tktheme') and self.prefs.get('tktheme') in self.style.theme_names():
+                self.style.theme_use(self.prefs['tktheme'])
 
+    def set_styles(self):
         dummy_text = tk.Text(self)
         bg = dummy_text['background']
         fg = dummy_text['foreground']
@@ -482,6 +486,7 @@ package ifneeded ttk::theme::clearlooks 0.1 \
         prefs.defaults['parse_only_selected_files'] = False
         prefs.defaults['selected_files'] = []
         prefs.defaults['fragid_container_attrs'] = []  # if empty, use core.XHTMLAttributes
+        prefs.defaults['tktheme'] = 'clearlooks'
 
         return prefs
 

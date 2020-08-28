@@ -20,8 +20,9 @@
 # Code for MainWindowTestCase.pump_events comes from https://stackoverflow.com/a/49028688
 
 
+import os
 import unittest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 import tkinter as tk
 from tkinter import ttk
 
@@ -116,6 +117,37 @@ class MainWindowTestCase(unittest.TestCase):
         self.assertEqual(self.root.undefined_attributes['classes'], {'aclass'})
         self.assertEqual(self.root.undefined_attributes['ids'], {'anid', 'anotherid'})
         self.assertFalse(self.root.is_running)
+
+    @patch('ui.sys', platform='linux')
+    def test_set_theme_on_linux(self, mock_yes_its_linux):
+        """
+        While in Win and Mac Tkinter uses native widgets, for Linux
+        the plugin uses the embedded clearlooks theme.
+        Clearlooks is used by default, but Linux users can change
+        the preference 'tktheme' to something else.
+        The preference will be used only if it's in ttk.Style().theme_names().
+        """
+        prefs = {'tktheme': 'clearlooks'}
+        self.root.prefs.get.side_effect = prefs.get
+        self.root.prefs.__getitem__.side_effect = prefs.__getitem__
+        root_dir = os.path.dirname(utils.SCRIPT_DIR)
+        with patch('ui.utils', SCRIPT_DIR=root_dir):
+            self.root.set_theme()
+            self.pump_events()
+            self.assertEqual(self.root.style.theme_use(), 'clearlooks')
+            themes = self.root.style.theme_names()
+            prefs['tktheme'] = themes[0]
+            self.root.set_theme()
+            self.pump_events()
+            self.assertEqual(self.root.style.theme_use(), prefs['tktheme'])
+            non_existent = 'x'
+            while non_existent in self.root.style.theme_names():
+                non_existent += 'x'
+            prefs['tktheme'] = non_existent
+            self.root.set_theme()
+            self.pump_events()
+            self.assertNotEqual(self.root.style.theme_use(), prefs['tktheme'])
+            self.assertEqual(self.root.style.theme_use(), themes[0])
 
 
 if __name__ == '__main__':
