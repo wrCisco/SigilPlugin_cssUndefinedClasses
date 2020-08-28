@@ -25,6 +25,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 import tkinter as tk
 from tkinter import ttk
+import tkinter.font as tkfont
 
 from bookcontainer import BookContainer
 
@@ -148,6 +149,22 @@ class MainWindowTestCase(unittest.TestCase):
             self.pump_events()
             self.assertNotEqual(self.root.style.theme_use(), prefs['tktheme'])
             self.assertEqual(self.root.style.theme_use(), themes[0])
+
+    def test_set_fonts(self):
+        class MW(ui.MainWindow):
+            def __init__(self):  # noqa
+                self.style = ttk.Style()
+        mw = MW()
+        default_font = tkfont.nametofont('TkDefaultFont')
+        text_font = tkfont.nametofont('TkTextFont')
+        mw.set_fonts()
+        self.assertEqual(text_font.actual(), mw.text_font.actual())
+        for k, v in default_font.actual().items():
+            with self.subTest(key=k, val=v):
+                if k == 'size':
+                    self.assertEqual(v + 2, mw.heading_label_font.actual()[k])
+                else:
+                    self.assertEqual(v, mw.heading_label_font.actual()[k])
 
 
 if __name__ == '__main__':

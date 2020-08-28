@@ -128,7 +128,7 @@ class MainWindow(tk.Tk, WidgetMixin):
             highlightthickness=1,
             padx=0, pady=0,
             relief=tk.FLAT,
-            font=self.text_heading_font,
+            font=self.text_font,
             wrap=tk.WORD
         )
         self.classes_text.tag_config(
@@ -159,7 +159,7 @@ class MainWindow(tk.Tk, WidgetMixin):
             highlightthickness=1,
             padx=0, pady=0,
             relief=tk.FLAT,
-            font=self.text_heading_font,
+            font=self.text_font,
             wrap=tk.WORD
         )
         self.ids_text.tag_config(
@@ -237,14 +237,10 @@ class MainWindow(tk.Tk, WidgetMixin):
         self.resizable(width=tk.TRUE, height=tk.TRUE)
 
     def set_fonts(self):
-        dummy_label, dummy_text = ttk.Label(self), tk.Text(self)
-        self.heading_label_font = tkfont.Font(font=dummy_label['font'])
+        self.heading_label_font = tkfont.nametofont('TkDefaultFont').copy()
         label_font_options = self.heading_label_font.actual()
-        # self.heading_label_font.configure(size=label_font_options['size'], weight='bold')
-        self.text_heading_font = tkfont.Font(font=dummy_text['font'])
-        self.text_heading_font.configure(family=label_font_options['family'])
-        dummy_label.destroy()
-        dummy_text.destroy()
+        self.heading_label_font.configure(size=label_font_options['size'] + 2)
+        self.text_font = tkfont.nametofont('TkTextFont').copy()
 
     def set_theme(self):
         if sys.platform.startswith('linux'):
