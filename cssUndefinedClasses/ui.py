@@ -193,16 +193,12 @@ class MainWindow(tk.Tk, WidgetMixin):
 
         self.lower_frame = ttk.Frame(self.mainframe, padding="0 5 0 0")  # W N E S
         self.lower_frame.grid(row=3, column=0, sticky='nsew')
-        self.prefs_button = ttk.Button(self.lower_frame, text='Preferences', command=self.prefs_dlg)
+        self.prefs_button = utils.ReturnButton(self.lower_frame, text='Preferences', command=self.prefs_dlg)
         self.prefs_button.grid(row=0, column=0, sticky='nw')
-        self.stop_button = ttk.Button(self.lower_frame, text='Cancel', command=self.close)
+        self.stop_button = utils.ReturnButton(self.lower_frame, text='Cancel', command=self.close)
         self.stop_button.grid(row=0, column=2, sticky='ne')
-        self.start_button = ttk.Button(self.lower_frame, text='Proceed', command=self.start_parsing)
+        self.start_button = utils.ReturnButton(self.lower_frame, text='Proceed', command=self.start_parsing)
         self.start_button.grid(row=0, column=3, sticky='ne')
-        self.stop_button.bind('<Return>', self.close)
-        self.stop_button.bind('<KP_Enter>', self.close)
-        self.start_button.bind('<Return>', self.start_parsing)
-        self.start_button.bind('<KP_Enter>', self.start_parsing)
         self.start_button.focus_set()
 
         self.lower_frame.rowconfigure(0, weight=0)
@@ -584,14 +580,10 @@ class PrefsDialog(tk.Toplevel, WidgetMixin):
         self.lower_frame = ttk.Frame(self.mainframe, padding="0 12 0 0")
         self.lower_frame.grid(row=4, column=0, sticky='nsew')
 
-        self.cancel_button = ttk.Button(self.lower_frame, text='Cancel', command=self.destroy)
+        self.cancel_button = utils.ReturnButton(self.lower_frame, text='Cancel', command=self.destroy)
         self.cancel_button.grid(row=0, column=1, sticky='ne')
-        self.ok_button = ttk.Button(self.lower_frame, text='OK', command=self.save_and_proceed)
+        self.ok_button = utils.ReturnButton(self.lower_frame, text='OK', command=self.save_and_proceed)
         self.ok_button.grid(row=0, column=2, sticky='ne')
-        self.cancel_button.bind('<Return>', self.destroy)
-        self.cancel_button.bind('<KP_Enter>', self.destroy)
-        self.ok_button.bind('<Return>', self.save_and_proceed)
-        self.ok_button.bind('<KP_Enter>', self.save_and_proceed)
 
         self.lower_frame.rowconfigure(0, weight=0)
         self.lower_frame.columnconfigure(0, weight=1)

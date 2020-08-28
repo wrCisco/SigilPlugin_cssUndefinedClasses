@@ -25,9 +25,24 @@ Collection of utilities for Sigil plugins.
 import re
 import os
 import inspect
+from tkinter import ttk
 
 
 SCRIPT_DIR = os.path.normpath(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))))
+
+
+class ReturnButton(ttk.Button):
+    """
+    Simple wrapper over ttk.Button to make buttons always
+    bound with <Return> and <KP_Enter> events (with the same
+    callback as the button's command option).
+    Only usable if the command's callback doesn't require arguments.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.bind('<Return>', lambda e: self.invoke())
+        self.bind('<KP_Enter>', lambda e: self.invoke())
 
 
 def tk_iterate_children(parent):
