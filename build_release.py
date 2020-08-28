@@ -38,7 +38,8 @@ PROJECT_FILES = {
 }
 
 ADD_TO_RELEASE = {
-    os.path.join(ICONS_PATH, 'icon_clean_xhtml48x48.png'): 'plugin.png'
+    os.path.join(ICONS_PATH, 'icon_clean_xhtml48x48.png'): 'plugin.png',
+    os.path.join(ROOT_PATH, 'README.md'): 'README.md'
 }
 
 NOT_RELEASED = []
