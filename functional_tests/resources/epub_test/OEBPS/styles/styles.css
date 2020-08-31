@@ -1,0 +1,213 @@
+@page {
+ margin-top: 16px;
+ margin-bottom: 8px;
+} 
+/*Attributs et notes.*/
+i {
+ font-style:italic
+}
+sup { 
+ vertical-align: text-top;
+ font-size: smaller;
+}
+a:link    {
+ color: green;
+ background-color: transparent;
+ text-decoration: none
+}
+.noteanchor {
+ margin-left: 5px;
+ font-weight: bold;
+ font-style: normal;
+ font-size: smaller;
+ vertical-align: text-top;
+ color: green
+}
+.FootnoteSymbol {
+ font-size: 110%;
+ font-weight: bold;
+}
+.note {
+  margin-bottom: 10px;
+}
+/*Paragraphes.*/
+p {
+ display: block;
+ margin-top: 0;
+ margin-bottom: 2px;
+ border:none;
+ padding: 0;
+ text-indent: 24px;
+ text-align: justify;
+}
+.biblio {
+ display: block;
+ margin: 8px 0 0 40px;
+ border: none;
+ padding: 0;
+ text-indent: -24px;
+ text-align: left;
+}
+.caption {
+ display: block;
+ margin: 8px 32px 8px 32px;
+ border: none;
+ padding:0;
+ text-indent: 0;
+ text-align: center;
+ font-style: italic;
+ font-weight: normal;
+ font-size: 12px;
+}
+.centrage {
+ display: block;
+ margin-top: 8px;
+ margin-bottom: 8px;
+ border: none;
+ padding:0;
+ text-indent: 0;
+ text-align: center;
+}
+.droite {
+ display: block;
+ margin-top: 32px;
+ margin-bottom: 2px;
+ margin-right: 48px;
+ border: none;
+ padding: 0;
+ text-indent: 0;
+ text-align: right;
+}
+.ParagEtoile {
+ margin: 0;
+ border: none;
+ padding-top: 16px;
+ padding-bottom: 8px;
+ text-align: center;
+ line-height: 0.5;
+ font-size: 83%;
+ text-shadow: 1pt 1pt;
+ letter-spacing: 0.08em;
+ text-indent: 0;
+}
+/*Espaces.*/
+.BlancUn {
+  padding-top: 24px;
+}
+.BlancDeux {
+  padding-top: 75px;
+}
+.BlancTrois {
+  padding-top: 90%;
+}
+.break {
+ page-break-before: always;
+ font-size: 0.01em;
+}
+/*Affichage.*/
+.big {
+ font-size: 140%;
+}
+.small {
+ font-size: 70%;
+}
+.hidden { 
+ display:none;
+}
+.Title, .Heading, .Subtitle {
+text-indent: 0;
+}
+.century {
+ font-size: smaller;
+ text-transform: uppercase;
+}
+/*Lignes.*/
+hr {
+  margin: 24px 70% 8px 0;
+  height: 2px;
+  color: black;
+  background-color: black;
+}
+.footnote {
+ margin: 16px 40% 16px 40%;
+ height: 1px;
+ color: black;
+ background-color: black; 
+}
+/*Titres.*/
+h1 {
+ font-weight: normal;
+ font-size: 120%;
+ text-indent: 0;
+ text-align: center;
+ padding-top: 80px;
+ padding-bottom: 24px;
+ margin: 0;
+}
+h2 {
+ font-weight: normal;
+ font-size: 107%;
+ text-indent: 0;
+ text-align: center;
+ padding-top: 48px;
+ padding-bottom: 24px;
+ margin: 0;
+}
+/*Lettrines sur deux lignes.*/
+.let1{
+  display: block;
+  float: left;
+  margin-top: -0.5em; 
+  margin-left: 1.30em;
+  margin-right: 0.20em;
+  height: 2.0em;
+}
+.let2{
+  font-size: 3.2em;  
+  line-height: 1em;
+}
+/*Réglage Lettrine J, Q et Ç (let2 vers let4) */
+.let4{
+  font-size: 3em;  
+  line-height: 0.9em;
+}
+.smcpTypeA {
+margin-left: -0.4em;}   /* faire passer sur autre feuille*/
+.smcpTypeV {
+margin-left: 0;} /* 0.5 RC faire passer sur autre feuille*/
+/*Réglage Lettrine span trois lignes */
+.let5 {
+  float: left;
+  font-size: 4.7em;
+  line-height: 0.65em;
+  margin-right: 0.05em;
+  margin-bottom: -0.1em;
+}
+.let6 {
+  float:left;
+  font-size: 4.7em;
+  line-height: 0.65em;
+  margin-right: 0.05em;
+  margin-bottom: 0.3em;
+}
+/*Paragraphe + grosse puce noire*/
+.blist {
+  margin: 6px 0 0 0.6px;
+  text-align: justify;
+  text-indent: -12px;
+}
+/*Box*/
+.box {
+  border: 1px solid #BBBDC0;
+  padding: 2px 8px 2px 8px;
+  margin: 12px 0 12px 0;
+}
+/*Left border to underline script*/
+.lbor {
+  border-left: 4px solid #BBBDC0;
+  padding-left: 8px;
+  margin: 10px 0 10px 0;
+}
+code {
+  font-family: monospace;
+}

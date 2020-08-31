@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ncx version="2005-1" xml:lang="it" xmlns="http://www.daisy.org/z3986/2005/ncx/">
+  <head>
+    <meta content="81d1180f-2445-4b1b-a577-767f2a8df06a" name="dtb:uid" />
+    <meta content="2" name="dtb:depth" />
+    <meta content="0" name="dtb:totalPageCount" />
+    <meta content="0" name="dtb:maxPageNumber" />
+  </head>
+  <docTitle>
+    <text></text>
+  </docTitle>
+  <navMap>
+    <navPoint id="text1" playOrder="1">
+      <navLabel>
+        <text>Sotivacni-a bvacnifee</text>
+      </navLabel>
+      <content src="chapter.xhtml" />
+      <navPoint id="text2" playOrder="2">
+        <navLabel>
+          <text>Lo sisoicubuanat</text>
+        </navLabel>
+        <content src="chapter2.xhtml" />
+      </navPoint>
+      <navPoint id="text3" playOrder="3">
+        <navLabel>
+          <text>Lomiota.  Bork Bork Bork! Sacsfe-a vita momiotna?</text>
+        </navLabel>
+        <content src="chapter3.xhtml" />
+      </navPoint>
+      <navPoint id="text4" playOrder="4">
+        <navLabel>
+          <text>Il mmiotnacisvsking kiu Lomiota</text>
+        </navLabel>
+        <content src="chapter4.xhtml" />
+      </navPoint>
+      <navPoint id="text5" playOrder="5">
+        <navLabel>
+          <text>Il tvacninna</text>
+        </navLabel>
+        <content src="chapter5.xhtml" />
+      </navPoint>
+      <navPoint id="text6" playOrder="6">
+        <navLabel>
+          <text>Gaaeigal Bacs Leeliaaet</text>
+        </navLabel>
+        <content src="chapter6.xhtml" />
+      </navPoint>
+    </navPoint>
+  </navMap>
+</ncx>

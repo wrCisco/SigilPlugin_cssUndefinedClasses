@@ -2,6 +2,7 @@
 __pycache__/
 Releases/
 *.pyc
+*.epub
 
 # From https://gist.github.com/octocat/9257657
 # Compiled source #
