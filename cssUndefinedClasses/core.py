@@ -175,6 +175,21 @@ class CSSParser:
                 self._parse_selector(selector.selectorText, collector)
         return collector
 
+    @staticmethod
+    def is_not_escaped(token: str, index: int, escape_char: str = '\\'):
+        """
+        Check that char at position index in token
+        is not preceded by an odd number of escape_char.
+        """
+        escapes = 0
+        while index > 0:
+            index -= 1
+            if token[index] == escape_char:
+                escapes += 1
+            else:
+                break
+        return escapes % 2 == 0
+
     def _parse_selector(self, selector: str, collector: CSSAttributes) -> None:
         """
         Parse a selector and extract all class and id names,
@@ -186,21 +201,21 @@ class CSSParser:
             char = selector[i]
 
             # class selector
-            if char == '.' and (i == 0 or selector[i - 1] != '\\'):
+            if char == '.' and self.is_not_escaped(selector, i):
                 class_match = self.ident_token.match(selector[i + 1:])
                 if class_match:
                     collector.classes['classes'].add(utils.css_remove_escapes(class_match.group()))
                     i += class_match.end() + 1
 
             # id selector
-            elif char == '#' and (i == 0 or selector[i - 1] != '\\'):
+            elif char == '#' and self.is_not_escaped(selector, i):
                 id_match = self.ident_token.match(selector[i + 1:])
                 if id_match:
                     collector.ids['equal'].add(utils.css_remove_escapes(id_match.group()))
                     i += id_match.end() + 1
 
             # attribute selector
-            elif char == '[' and (i == 0 or selector[i - 1] != '\\'):
+            elif char == '[' and self.is_not_escaped(selector, i):
                 fragment = selector[i:]
                 # The pattern doesn't take into account the possibility of
                 # escaping the letters 'c', 'l', 'a', 's', 'i', 'd'

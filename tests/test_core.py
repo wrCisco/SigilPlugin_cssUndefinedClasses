@@ -206,6 +206,32 @@ class CSSParserTest(Parser):
             with self.subTest(type='ids', key=k, val=v):
                 self.assertEqual(v, set())
 
+    def test_parse_selector_token_ends_with_double_backslash(self):
+        collector = core.CSSAttributes()
+        self.cssparser._parse_selector(
+            '.class-whose-name-ends-with-backslash\\\\.other-class', collector
+        )
+        self.assertNotEqual(collector.classes, {})
+        for k, v in collector.classes.items():
+            with self.subTest(type='classes', key=k, val=v):
+                if k == 'classes':
+                    self.assertEqual(v, {'class-whose-name-ends-with-backslash\\', 'other-class'})
+                else:
+                    self.assertEqual(v, set())
+
+    def test_parse_selector_attribute_selector_preceded_by_escaped_bracket(self):
+        collector = core.CSSAttributes()
+        self.cssparser._parse_selector(
+            '.\\\\\\[[class~=aclass]', collector
+        )
+        self.assertNotEqual(collector.classes, {})
+        for k, v in collector.classes.items():
+            with self.subTest(type='classes', key=k, val=v):
+                if k == 'classes':
+                    self.assertEqual(v, {'\\[', 'aclass'})
+                else:
+                    self.assertEqual(v, set())
+
 
 class XMLParserTest(Parser):
 
