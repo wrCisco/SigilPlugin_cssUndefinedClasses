@@ -44,10 +44,43 @@ class XMLParsingError(Exception):
 
 class XHTMLAttributes:
 
+    # Attributes that can contain fragment identifiers
     fragid_container_attrs = [
         'href',
         'epub:textref',
-        'src'
+        'src',
+        'action',
+        'cite',
+        'data',
+        'form',
+        'formaction',
+        'ping',
+        'poster',
+        'xlink:href',  # MathML, SVG
+        'altimg',  # MathML
+        'cdgroup',  # MathML
+        'resource',  # RDFa
+    ]
+    # Attributes that can contain a single id reference
+    idref_container_attrs = [
+        'commandfor',
+        'list',
+        'popovertarget',
+        'xref',  # MathML
+        'aria-activedescendant'
+    ]
+    # Attributes that can contain a list of id references
+    idref_list_container_attrs = [
+        'for',
+        'headers',
+        'itemref',
+        'aria-controls',
+        'aria-describedby',
+        'aria-details',
+        'aria-errormessage',
+        'aria-flowto',
+        'aria-labelledby',
+        'aria-owns'
     ]
 
     def __init__(self):
@@ -59,7 +92,7 @@ class XHTMLAttributes:
         class, used to match against some of the css attribute selectors.
         self.id_values are the names of all the ids found in xhtml elements.
         self.fragment_identifier are the values of all the fragment identifiers
-        found in xhtml elements.
+        and id references found in xhtml elements.
 
         self.info_class_names is a dictionary that has the elements of self.class_names
         as keys and the occurrences in files as values.
@@ -272,6 +305,8 @@ def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes, prefs: M
     """
     a = XHTMLAttributes()
     fragid_container_attrs = prefs['fragid_container_attrs'] or a.fragid_container_attrs
+    idref_container_attrs = prefs['idref_container_attrs'] or a.idref_container_attrs
+    idref_list_container_attrs = prefs['idref_list_container_attrs'] or a.idref_list_container_attrs
     for xhtml_id, xhtml_href in bk.text_iter():
         filename = utils.href_to_basename(xhtml_href)
         try:
@@ -289,6 +324,16 @@ def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes, prefs: M
                 fragid = get_fragid(elem, attr)
                 if fragid:
                     a.fragment_identifier.add(fragid)
+            for attr in idref_container_attrs:
+                idref = elem.get(attr, '')
+                if idref:
+                    a.fragment_identifier.add(idref)
+            for attr in idref_list_container_attrs:
+                idrefs = elem.get(attr, [])
+                if idrefs:
+                    a.fragment_identifier.update(
+                        ref for ref in re.split(r'[ \r\n\t\f]+', idrefs) if ref
+                    )
             if gather_only_fragid:
                 continue
 

@@ -477,7 +477,17 @@ package ifneeded ttk::theme::clearlooks 0.1 \
         prefs.defaults['parse_only_selected_files'] = False
         prefs.defaults['selected_files'] = []
         prefs.defaults['fragid_container_attrs'] = []  # if empty, use core.XHTMLAttributes
+        prefs.defaults['idref_container_attrs'] = []  # if empty, use core.XHTMLAttributes
+        prefs.defaults['idref_list_container_attrs'] = []  # if empty use core.XHTMLAttributes
         prefs.defaults['tktheme'] = 'clearlooks'
+        prefs.defaults['update_prefs_defaults'] = 0
+
+        if prefs['update_prefs_defaults'] == 0:
+            if prefs['fragid_container_attrs']:
+                for attr in core.XHTMLAttributes.fragid_container_attrs[3:]:
+                    if attr not in prefs['fragid_container_attrs']:
+                        prefs['fragid_container_attrs'].append(attr)
+            prefs['update_prefs_defaults'] = 1
 
         return prefs
 
@@ -507,7 +517,7 @@ class PrefsDialog(tk.Toplevel, WidgetMixin):
         super().__init__(parent)
         self.transient(parent)
         self.title('Preferences')
-        self.geometry('600x400')
+        self.geometry('600x600')
         self.resizable(width=tk.TRUE, height=tk.TRUE)
         self.protocol('WM_DELETE_WINDOW', self.destroy)
 
@@ -555,8 +565,8 @@ class PrefsDialog(tk.Toplevel, WidgetMixin):
 
         self.fragid_attrs_label = ttk.Label(
             self.mainframe,
-            text='Comma separated list of attributes that will be used to search for fragment identifiers '
-                 '(an empty list will default to {}).'.format(', '.join(core.XHTMLAttributes.fragid_container_attrs)),
+            text='Comma separated lists of attributes that will be used to search for:\n\n- fragment identifiers '
+                 '(an empty list will default to {}):'.format(', '.join(core.XHTMLAttributes.fragid_container_attrs)),
             wraplength=self.mainframe.winfo_width() - 30,
             padding='0 18 0 6'
         )
@@ -572,8 +582,42 @@ class PrefsDialog(tk.Toplevel, WidgetMixin):
         self.fragid_attrs_entry.configure(width=fragid_entry_width)
         self.fragid_attrs_entry.grid(row=3, column=0, sticky='nsew')
 
+        self.idref_attrs_label = ttk.Label(
+            self.mainframe,
+            text='- a single id reference '
+                 '(an empty list will default to {}):'.format(', '.join(core.XHTMLAttributes.idref_container_attrs)),
+            wraplength=self.mainframe.winfo_width() - 30,
+            padding='0 18 0 6'
+        )
+        self.idref_attrs_label.grid(row=4, column=0, sticky='nsew')
+        self.idref_attrs_value = tk.StringVar()
+        self.idref_attrs_entry = ttk.Entry(
+            self.mainframe,
+            textvariable=self.idref_attrs_value,
+            exportselection=0,
+            width=fragid_entry_width
+        )
+        self.idref_attrs_entry.grid(row=5, column=0, sticky='nsew')
+
+        self.idref_list_attrs_label = ttk.Label(
+            self.mainframe,
+            text='- a list of id references '
+                 '(an empty list will default to {}):'.format(', '.join(core.XHTMLAttributes.idref_list_container_attrs)),
+            wraplength=self.mainframe.winfo_width() - 30,
+            padding='0 18 0 6'
+        )
+        self.idref_list_attrs_label.grid(row=6, column=0, sticky='nsew')
+        self.idref_list_attrs_value = tk.StringVar()
+        self.idref_list_attrs_entry = ttk.Entry(
+            self.mainframe,
+            textvariable=self.idref_list_attrs_value,
+            exportselection=0,
+            width=fragid_entry_width
+        )
+        self.idref_list_attrs_entry.grid(row=7, column=0, sticky='nsew')
+
         self.lower_frame = ttk.Frame(self.mainframe, padding="0 12 0 0")
-        self.lower_frame.grid(row=4, column=0, sticky='nsew')
+        self.lower_frame.grid(row=8, column=0, sticky='nsew')
 
         self.cancel_button = utils.ReturnButton(self.lower_frame, text='Cancel', command=self.destroy)
         self.cancel_button.grid(row=0, column=1, sticky='ne')
@@ -598,6 +642,14 @@ class PrefsDialog(tk.Toplevel, WidgetMixin):
             self.fragid_attrs_value.set(', '.join(self.prefs['fragid_container_attrs']))
         else:
             self.fragid_attrs_value.set(', '.join(core.XHTMLAttributes.fragid_container_attrs))
+        if self.prefs.get('idref_container_attrs'):
+            self.idref_attrs_value.set(', '.join(self.prefs['idref_container_attrs']))
+        else:
+            self.idref_attrs_value.set(', '.join(core.XHTMLAttributes.idref_container_attrs))
+        if self.prefs.get('idref_list_container_attrs'):
+            self.idref_list_attrs_value.set(', '.join(self.prefs['idref_list_container_attrs']))
+        else:
+            self.idref_list_attrs_value.set(', '.join(core.XHTMLAttributes.idref_list_container_attrs))
         if self.prefs.get('parse_only_selected_files'):
             self.parse_only_selected_value.set(1)
         else:
@@ -614,8 +666,13 @@ class PrefsDialog(tk.Toplevel, WidgetMixin):
                     self.selected_files_list.selection_set(index)
 
     def save_and_proceed(self, event=None):
-        fragid_attrs = self.fragid_attrs_value.get()
-        self.prefs['fragid_container_attrs'] = [attr.strip() for attr in fragid_attrs.split(',') if attr]
+        attrs_names = {
+            'fragid_container_attrs': self.fragid_attrs_value.get(),
+            'idref_container_attrs': self.idref_attrs_value.get(),
+            'idref_list_container_attrs': self.idref_list_attrs_value.get(),
+        }
+        for k, v in attrs_names.items():
+            self.prefs[k] = [attr.strip() for attr in v.split(',') if attr]
         if self.parse_only_selected_value.get() == 1:
             self.prefs['parse_only_selected_files'] = True
         else:
@@ -629,6 +686,10 @@ class PrefsDialog(tk.Toplevel, WidgetMixin):
 
     def update_full_width(self, event=None):
         self.fragid_attrs_label.configure(wraplength=event.width - 30)
+        self.idref_attrs_label.configure(wraplength=event.width - 30)
+        self.idref_list_attrs_label.configure(wraplength=event.width - 30)
         fragid_entry_width = event.width // self.fragid_font.measure('0')
         self.fragid_attrs_entry.configure(width=fragid_entry_width)
+        self.idref_attrs_entry.configure(width=fragid_entry_width)
+        self.idref_list_attrs_entry.configure(width=fragid_entry_width)
         self.master.style.configure('Preferences.TCheckbutton', wraplength=event.width - 45)

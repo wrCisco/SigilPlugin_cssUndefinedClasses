@@ -39,6 +39,8 @@ markup_samples = {
     <p class="undefinedclass definedinstyleclass">second par</p>
     <p id="undefinedid">third par</p>
     <p class="aclass"><a id="someanchor">anchor</a></p>
+    <p id="referenced-by-aria-attribute">fifth par</p>
+    <input type="text" aria-labelledby="referenced-by-aria-attribute" value=""/>
   </body>
 </html>
 ''',
@@ -57,6 +59,8 @@ markup_samples = {
     <p class="undefinedclass definedinstyleclass">second par</p>
     <p id="undefinedid">third par</p>
     <p class="aclass"><a id="someanchor">anchor</a></p>
+    <p id="referenced-by-aria-attribute">fifth par</p>
+    <input type="text" aria-labelledby="referenced-by-aria-attribute" value=""/>
   </body>
 </html>
 ''',
@@ -75,6 +79,8 @@ markup_samples = {
     <p class="definedinstyleclass">second par</p>
     <p>third par</p>
     <p class="aclass"><a id="someanchor">anchor</a></p>
+    <p id="referenced-by-aria-attribute">fifth par</p>
+    <input type="text" aria-labelledby="referenced-by-aria-attribute" value=""/>
   </body>
 </html>
 ''',

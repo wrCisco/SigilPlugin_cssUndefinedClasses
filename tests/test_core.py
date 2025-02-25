@@ -241,7 +241,9 @@ class XMLParserTest(Parser):
         self.prefs = {
             'parse_only_selected_files': False,
             'selected_files': [],
-            'fragid_container_attrs': []
+            'fragid_container_attrs': [],
+            'idref_container_attrs': [],
+            'idref_list_container_attrs': [],
         }
 
     def test_xhtml_parse(self):
@@ -257,11 +259,11 @@ class XMLParserTest(Parser):
         )
         self.assertEqual(
             collector.id_values,
-            {'anid', 'undefinedid', 'someanchor'}
+            {'anid', 'undefinedid', 'someanchor', 'referenced-by-aria-attribute'}
         )
         self.assertEqual(
             collector.fragment_identifier,
-            {'someanchor'}
+            {'someanchor', 'referenced-by-aria-attribute'}
         )
         self.assertEqual(
             collector.info_class_names,
@@ -277,7 +279,8 @@ class XMLParserTest(Parser):
             {
                 'anid': {'file_href1': 1},
                 'undefinedid': {'file_href1': 1},
-                'someanchor': {'file_href1': 1}
+                'someanchor': {'file_href1': 1},
+                'referenced-by-aria-attribute': {'file_href1': 1}
             }
         )
         self.assertNotEqual(self.css_collector.classes, {})
@@ -295,7 +298,7 @@ class XMLParserTest(Parser):
         self.assertEqual(collector.class_names, set())
         self.assertEqual(collector.literal_class_values, set())
         self.assertEqual(collector.id_values, set())
-        self.assertEqual(collector.fragment_identifier, {'someanchor'})
+        self.assertEqual(collector.fragment_identifier, {'someanchor', 'referenced-by-aria-attribute'})
         self.assertEqual(collector.info_class_names, {})
         self.assertEqual(collector.info_id_values, {})
         self.assertNotEqual(self.css_collector.classes, {})
