@@ -386,6 +386,8 @@ def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes, prefs: M
 
 def parse_xml(bk: 'BookContainer', collector: XHTMLAttributes, prefs: MutableMapping) -> XHTMLAttributes:
     fragid_container_attrs = prefs['fragid_container_attrs'] or collector.fragid_container_attrs
+    idref_container_attrs = prefs['idref_container_attrs'] or collector.idref_container_attrs
+    idref_list_container_attrs = prefs['idref_list_container_attrs'] or collector.idref_list_container_attrs
     xhtml_files = set(id_ for id_, href in bk.text_iter())
     for file_id, href, mime in bk.manifest_iter():
         # if file is xhtml or not xml, skip ahead
@@ -401,6 +403,16 @@ def parse_xml(bk: 'BookContainer', collector: XHTMLAttributes, prefs: MutableMap
                 fragid = get_fragid(elem, attr)
                 if fragid:
                     collector.fragment_identifier.add(fragid)
+            for attr in idref_container_attrs:
+                idref = elem.get(attr, '')
+                if idref:
+                    collector.fragment_identifier.add(idref)
+            for attr in idref_list_container_attrs:
+                idrefs = elem.get(attr, [])
+                if idrefs:
+                    collector.fragment_identifier.update(
+                        ref for ref in re.split(r'[ \r\n\t\f]+', idrefs) if ref
+                    )
     return collector
 
 
