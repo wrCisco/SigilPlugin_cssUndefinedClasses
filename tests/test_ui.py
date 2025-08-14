@@ -23,33 +23,25 @@
 import os
 import unittest
 from unittest.mock import MagicMock, patch
-import tkinter as tk
-from tkinter import ttk
-import tkinter.font as tkfont
 
 from bookcontainer import BookContainer
 
+from plugin_utils import (
+    QtWidgets, QtCore, Qt, QtGui, iswindows
+)
 import ui
 import core
 import utils
-
+from wrappingcheckbox import WrappingCheckBox
 
 class MainWindowTestCase(unittest.TestCase):
 
     def setUp(self):
         bk = MagicMock(spec_set=BookContainer)
-        self.root = ui.MainWindow(bk)
-        self.root.withdraw()  # call root.deiconify followed by pump_events in tests to make the GUI visible
-        self.pump_events()
-
-    def tearDown(self):
-        if self.root.is_running:
-            self.root.destroy()
-            self.pump_events()
-
-    def pump_events(self):
-        while self.root.dooneevent(tk._tkinter.ALL_EVENTS | tk._tkinter.DONT_WAIT):
-            pass
+        if not QtWidgets.QApplication.instance():
+            self.app = QtWidgets.QApplication([])
+        prefs = MagicMock()
+        self.root = ui.MainWindow(bk, prefs)
 
     def test_proceed_select_proceed(self):
         """
@@ -71,100 +63,48 @@ class MainWindowTestCase(unittest.TestCase):
             }
         }
         with patch('core.find_attributes_to_delete', return_value=attributes):
-            self.root.start_button.event_generate('<<Invoke>>')
-            # self.root.start_button.event_generate('<Button-1>')
-            # self.root.start_button.event_generate('<ButtonRelease-1>')
-            self.pump_events()
+            self.root.ok_button.click()
         self.assertNotEqual(self.root.check_undefined_attributes['classes'], {})
         for k, v in self.root.check_undefined_attributes['classes'].items():
             with self.subTest(type='classes', key=k, val=v):
                 self.assertIn(k, attributes['classes'])
-                self.assertIsInstance(v, tk.BooleanVar)
-                self.assertEqual(v.get(), True)
+                self.assertIsInstance(v, WrappingCheckBox)
+                self.assertEqual(v.isChecked(), True)
         self.assertNotEqual(self.root.check_undefined_attributes['ids'], {})
         for k, v in self.root.check_undefined_attributes['ids'].items():
             with self.subTest(type='ids', key=k, val=v):
                 self.assertIn(k, attributes['ids'])
-                self.assertIsInstance(v, tk.BooleanVar)
-                self.assertEqual(v.get(), True)
+                self.assertIsInstance(v, WrappingCheckBox)
+                self.assertEqual(v.isChecked(), True)
 
-        for checkbutton in utils.tk_iterate_children(self.root.classes_text):
-            if checkbutton['text'].startswith('anotherclass '):
-                checkbutton.event_generate('<<Invoke>>')
-                # checkbutton.event_generate('<Button-1>')
-                # checkbutton.event_generate('<ButtonRelease-1>')
-        self.pump_events()
+        for i in range(self.root.classes_frame_layout.count()):
+            widget = self.root.classes_frame_layout.itemAt(i).widget()
+            if isinstance(widget, WrappingCheckBox):
+                # in WrappingCheckBoxes, setting text on the label
+                # is delayed until the widget's show event and the
+                # text is stored in labelText
+                if widget.labelText.startswith('anotherclass'):
+                    widget.checkbox.click()
         self.assertNotEqual(self.root.check_undefined_attributes['classes'], {})
         for k, v in self.root.check_undefined_attributes['classes'].items():
             with self.subTest(type='classes', key=k, val=v):
                 self.assertIn(k, attributes['classes'])
-                self.assertIsInstance(v, tk.BooleanVar)
+                self.assertIsInstance(v, WrappingCheckBox)
                 if k == 'anotherclass':
-                    self.assertEqual(v.get(), False)
+                    self.assertEqual(v.isChecked(), False)
                 else:
-                    self.assertEqual(v.get(), True)
+                    self.assertEqual(v.isChecked(), True)
         self.assertNotEqual(self.root.check_undefined_attributes['ids'], {})
         for k, v in self.root.check_undefined_attributes['ids'].items():
             with self.subTest(type='ids', key=k, val=v):
                 self.assertIn(k, attributes['ids'])
-                self.assertIsInstance(v, tk.BooleanVar)
-                self.assertEqual(v.get(), True)
+                self.assertIsInstance(v, WrappingCheckBox)
+                self.assertEqual(v.isChecked(), True)
 
         with patch('core.delete_xhtml_attributes'):
-            self.root.start_button.event_generate('<<Invoke>>')
-            # self.root.start_button.event_generate('<Button-1>')
-            # self.root.start_button.event_generate('<ButtonRelease-1>')
-            self.pump_events()
+            self.root.ok_button.click()
         self.assertEqual(self.root.undefined_attributes['classes'], {'aclass'})
         self.assertEqual(self.root.undefined_attributes['ids'], {'anid', 'anotherid'})
-        self.assertFalse(self.root.is_running)
-
-    @patch('ui.sys', platform='linux')
-    def test_set_theme_on_linux(self, mock_yes_its_linux):
-        """
-        While in Win and Mac Tkinter uses native widgets, for Linux
-        the plugin uses the embedded clearlooks theme.
-        Clearlooks is used by default, but Linux users can change
-        the preference 'tktheme' to something else.
-        The preference will be used only if it's in ttk.Style().theme_names().
-        """
-        prefs = {'tktheme': 'clearlooks'}
-        self.root.prefs.get.side_effect = prefs.get
-        self.root.prefs.__getitem__.side_effect = prefs.__getitem__
-        root_dir = utils.SCRIPT_DIR.parent
-        with patch('ui.utils', SCRIPT_DIR=root_dir):
-            self.root.set_theme()
-            self.pump_events()
-            self.assertEqual(self.root.style.theme_use(), 'clearlooks')
-            themes = self.root.style.theme_names()
-            prefs['tktheme'] = themes[0]
-            self.root.set_theme()
-            self.pump_events()
-            self.assertEqual(self.root.style.theme_use(), prefs['tktheme'])
-            non_existent = 'x'
-            while non_existent in self.root.style.theme_names():
-                non_existent += 'x'
-            prefs['tktheme'] = non_existent
-            self.root.set_theme()
-            self.pump_events()
-            self.assertNotEqual(self.root.style.theme_use(), prefs['tktheme'])
-            self.assertEqual(self.root.style.theme_use(), themes[0])
-
-    def test_set_fonts(self):
-        class MW(ui.MainWindow):
-            def __init__(self):  # noqa
-                self.style = ttk.Style()
-        mw = MW()
-        default_font = tkfont.nametofont('TkDefaultFont')
-        text_font = tkfont.nametofont('TkTextFont')
-        mw.set_fonts()
-        self.assertEqual(text_font.actual(), mw.text_font.actual())
-        for k, v in default_font.actual().items():
-            with self.subTest(key=k, val=v):
-                if k == 'size':
-                    self.assertEqual(v + 2, mw.heading_label_font.actual()[k])
-                else:
-                    self.assertEqual(v, mw.heading_label_font.actual()[k])
 
 
 if __name__ == '__main__':
