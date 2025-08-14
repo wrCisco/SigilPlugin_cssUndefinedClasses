@@ -1,10 +1,12 @@
+import numbers
+
 from plugin_utils import QtWidgets, Qt, QtCore, QtGui
 
 
 class WrappingCheckBox(QtWidgets.QWidget):
 
     def __init__(self, text="", margins=(0,0,0,0), spacing=12,
-                fillBackground=True, parent=None):
+                fillBackground=True, minWidthToBreakWords=None, parent=None):
         super().__init__(parent)
         
         self.layout = QtWidgets.QHBoxLayout(self)
@@ -18,6 +20,11 @@ class WrappingCheckBox(QtWidgets.QWidget):
         self.label = QtWidgets.QLabel()
         self.label.setWordWrap(True)
         self.labelText = text  # will be set as label's text in the showEvent method
+
+        if isinstance(minWidthToBreakWords, numbers.Real):
+            self.minWidthToBreakWords = minWidthToBreakWords
+        else:
+            self.minWidthToBreakWords = None
         
         # Make label clickable to toggle checkbox
         self.label.mousePressEvent = self._on_label_click
@@ -74,8 +81,11 @@ class WrappingCheckBox(QtWidgets.QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
+        availableWidth = self.width() - 20
+        if self.minWidthToBreakWords and self.minWidthToBreakWords < availableWidth:
+            availableWidth = self.minWidthToBreakWords
         self.label.setText(
-            self.break_long_words(self.labelText, self.width() - 20)
+            self.break_long_words(self.labelText, availableWidth)
         )
         # self.label.updateGeometry()
         # self.updateGeometry()
@@ -99,9 +109,11 @@ class WrappingCheckBox(QtWidgets.QWidget):
         w_start = 0
         for i, c in enumerate(text):
             if c in separators:
-                words.append(text[w_start:i])
-                w_start = i
-        if w_start != i:
+                if w_start != i:
+                    words.append(text[w_start:i])
+                words.append(c)
+                w_start = i + 1
+        if w_start <= i:
             words.append(text[w_start:])
         fontMetrics = QtGui.QFontMetricsF(self.label.font())
         for i, w in enumerate(words):
