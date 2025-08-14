@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
-# Copyright (c) 2020 Francesco Martini
+# Copyright (c) 2020, 2025 Francesco Martini
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,13 +20,43 @@
 
 import sys
 
+from plugin_utils import (
+    PluginApplication, QtWidgets, QtCore, Qt, QtGui, iswindows
+)
 import ui
+import utils
+import core
+
+PLUGIN_ICON = str(utils.SCRIPT_DIR / 'plugin.png')
+
+
+def get_prefs(bk):
+    prefs = bk.getPrefs()
+
+    prefs.defaults['parse_only_selected_files'] = False
+    prefs.defaults['selected_files'] = []
+    prefs.defaults['fragid_container_attrs'] = []  # if empty, use core.XHTMLAttributes
+    prefs.defaults['idref_container_attrs'] = []  # if empty, use core.XHTMLAttributes
+    prefs.defaults['idref_list_container_attrs'] = []  # if empty use core.XHTMLAttributes
+    prefs.defaults['tktheme'] = 'clearlooks'
+    prefs.defaults['update_prefs_defaults'] = 0
+
+    if prefs['update_prefs_defaults'] == 0:
+        if prefs['fragid_container_attrs']:
+            for attr in core.XHTMLAttributes.fragid_container_attrs[3:]:
+                if attr not in prefs['fragid_container_attrs']:
+                    prefs['fragid_container_attrs'].append(attr)
+        prefs['update_prefs_defaults'] = 1
+
+    return prefs
 
 
 def run(bk):
-    plug = ui.MainWindow(bk)
-    plug.mainloop()
-    return 0 if plug.success else 1
+    prefs = get_prefs(bk)
+    app = PluginApplication([], bk, app_icon=PLUGIN_ICON, match_dark_palette=iswindows)
+    window = ui.MainWindow(bk, prefs)
+    success = not app.exec()
+    return 0 if success else 1
 
 
 def main():

@@ -1,8 +1,6 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-
-# Copyright (c) 2020 Francesco Martini
+# Copyright (c) 2020, 2025 Francesco Martini
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,677 +17,420 @@
 
 
 import sys
-import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox as msgbox
-import tkinter.font as tkfont
-from typing import Dict, Set
 
 import regex as re
 
+from plugin_utils import (
+    PluginApplication, QtWidgets, QtCore, Qt, QtGui, iswindows
+)
+from wrappingcheckbox import WrappingCheckBox
 import core
 import utils
 
 
-class WidgetMixin(tk.BaseWidget):
+class MainWindow(QtWidgets.QWidget):
 
-    def bind_to_mousewheel(self, widget):
-        if sys.platform.startswith("linux"):
-            widget.bind("<4>", lambda event: self.scroll_on_mousewheel(event, widget))
-            widget.bind("<5>", lambda event: self.scroll_on_mousewheel(event, widget))
-        else:
-            widget.bind("<MouseWheel>", lambda event: self.scroll_on_mousewheel(event, widget))
-
-    @staticmethod
-    def scroll_on_mousewheel(event, widget):
-        if event.num == 5 or event.delta < 0:
-            move = 1
-        else:
-            move = -1
-        widget.yview_scroll(move, tk.UNITS)
-
-    @staticmethod
-    def add_bindtag(widget, other):
-        bindtags = list(widget.bindtags())
-        bindtags.insert(1, str(other))  # self.winfo_pathname(other.winfo_id()))
-        widget.bindtags(tuple(bindtags))
-
-
-class MainWindow(tk.Tk, WidgetMixin):
-
-    def __init__(self, bk):
+    def __init__(self, bk, prefs, parent=None):
         self.bk = bk
-        self.prefs = self.get_prefs()
-        self.success = False  # True when the plugin terminates correctly
-        self.undefined_attributes: Dict[str, Set[str]] = {}
+        self.prefs = prefs
+        self.undefined_attributes: dict[str, set[str]] = {}
         self.check_undefined_attributes = {
             'classes': {},
-            'ids': {}
+            'ids': {},
         }
 
-        super().__init__()
-        self.style = ttk.Style()
-        self.title("cssUndefinedClasses")
+        super().__init__(parent)
+        self.setWindowTitle("cssUndefinedClasses")
         self.set_geometry()
-        self.set_fonts()
-        self.set_theme()
-        self.set_styles()
-        self.is_running = True
-        self.protocol('WM_DELETE_WINDOW', self.close)
-        try:
-            icon = tk.PhotoImage(file=str(utils.SCRIPT_DIR / 'plugin.png'))
-            self.iconphoto(True, icon)
-        except Exception as E:
-            # print("Error in setting plugin's icon: {}".format(E))
-            pass
 
-        self.rowconfigure(0, weight=1)
-        self.columnconfigure(0, weight=1)
+        main_layout = QtWidgets.QGridLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
-        self.mainframe = ttk.Frame(self, padding="5 0 5 5")  # W N E S
-        self.mainframe.grid(row=0, column=0, sticky="nsew")
-        self.mainframe.bind(
-            '<Configure>',
-            lambda event: self.update_full_wraplength(event)
+        self.top_label = QtWidgets.QLabel(
+            'Welcome! Please press the "Proceed" button to begin.'
         )
+        self.top_label.setWordWrap(True)
+        main_layout.addWidget(self.top_label, 0, 0, 1, -1)
 
-        self.top_label_text = tk.StringVar()
-        self.top_label_text.set('Welcome! Please press the "Proceed" button to begin.')
-        self.top_label = ttk.Label(
-            self.mainframe,
-            textvariable=self.top_label_text,
-            style='Top.TLabel'
-        )
-        self.top_label.grid(row=0, column=0, sticky='nsew')
-        self.panedwindow = ttk.PanedWindow(self.mainframe, orient=tk.HORIZONTAL)
-        self.panedwindow.grid(row=1, column=0, sticky='nsew')
+        paned_window = QtWidgets.QWidget()
+        paned_layout = QtWidgets.QHBoxLayout(paned_window)
+        paned_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.classes_frame = ttk.Frame(self.panedwindow, style='Paned.TFrame', padding=0)
-        self.ids_frame = ttk.Frame(self.panedwindow, style='Paned.TFrame', padding=0)
-        self.panedwindow.add(self.classes_frame, weight=1)
-        self.panedwindow.add(self.ids_frame, weight=1)
-        self.classes_frame.bind(
-            '<Configure>',
-            lambda event: self.update_paned_wraplength(event, 'Classes.InText')
-        )
-        self.ids_frame.bind(
-            '<Configure>',
-            lambda event: self.update_paned_wraplength(event, 'Ids.InText')
-        )
+        classes_area = QtWidgets.QScrollArea()
+        classes_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        classes_area.setWidgetResizable(True)
+        classes_area.setContentsMargins(0, 0, 0, 0)
+        self.classes_frame_layout = QtWidgets.QVBoxLayout()
+        self.classes_frame_layout.setSpacing(0)
+        self.classes_frame_layout.setContentsMargins(0, 0, 0, 0)
+        classes_frame = QtWidgets.QWidget()
+        classes_frame.setLayout(self.classes_frame_layout)
+        classes_area.setWidget(classes_frame)
 
-        self.scroll_classes_list = ttk.Scrollbar(self.classes_frame, orient=tk.VERTICAL)
-        self.classes_text = tk.Text(
-            self.classes_frame,
-            yscrollcommand=self.scroll_classes_list.set,
-            borderwidth=0,
-            highlightbackground='#999',
-            highlightcolor='#999',
-            highlightthickness=1,
-            padx=0, pady=0,
-            relief=tk.FLAT,
-            font=self.text_font,
-            wrap=tk.WORD
-        )
-        self.classes_text.tag_config(
-            'heading',
-            background=self.text_heading_bg, foreground=self.text_heading_fg,
-            spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
-        )
-        self.classes_text.tag_config(
-            'body',
-            lmargin1=6, lmargin2=6, rmargin=6
-        )
-        self.scroll_classes_list.grid(row=0, column=1, sticky='nsew')
-        self.scroll_classes_list['command'] = self.classes_text.yview
-        self.classes_text.grid(row=0, column=0, sticky='nsew')
-        self.classes_frame.rowconfigure(0, weight=1)
-        self.classes_frame.columnconfigure(0, weight=1)
-        self.classes_frame.columnconfigure(1, weight=0)
-        self.bind_to_mousewheel(self.classes_text)
-        self.classes_text.config(state=tk.DISABLED)
+        ids_area = QtWidgets.QScrollArea()
+        ids_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        ids_area.setWidgetResizable(True)
+        self.ids_frame_layout = QtWidgets.QVBoxLayout()
+        self.ids_frame_layout.setSpacing(0)
+        self.ids_frame_layout.setContentsMargins(0, 0, 0, 0)
+        ids_frame = QtWidgets.QWidget()
+        ids_frame.setLayout(self.ids_frame_layout)
+        ids_area.setWidget(ids_frame)
 
-        self.scroll_ids_list = ttk.Scrollbar(self.ids_frame, orient=tk.VERTICAL)
-        self.ids_text = tk.Text(
-            self.ids_frame,
-            yscrollcommand=self.scroll_ids_list.set,
-            borderwidth=0,
-            highlightbackground='#999',
-            highlightcolor='#999',
-            highlightthickness=1,
-            padx=0, pady=0,
-            relief=tk.FLAT,
-            font=self.text_font,
-            wrap=tk.WORD
-        )
-        self.ids_text.tag_config(
-            'heading',
-            background=self.text_heading_bg, foreground=self.text_heading_fg,
-            spacing1=6, spacing3=6, lmargin1=6, lmargin2=6, rmargin=6
-        )
-        self.ids_text.tag_config(
-            'body',
-            lmargin1=6, lmargin2=6, rmargin=6
-        )
-        self.scroll_ids_list.grid(row=0, column=1, sticky='nsew')
-        self.scroll_ids_list['command'] = self.ids_text.yview
-        self.ids_text.grid(row=0, column=0, sticky='nsew')
-        self.ids_frame.rowconfigure(0, weight=1)
-        self.ids_frame.columnconfigure(0, weight=1)
-        self.ids_frame.columnconfigure(1, weight=0)
-        self.bind_to_mousewheel(self.ids_text)
-        self.ids_text.config(state=tk.DISABLED)
+        paned_layout.addWidget(classes_area)
+        paned_layout.addWidget(ids_area)
 
-        # self.warning_frame = ttk.Frame(self.mainframe, padding="0 5 0 0")
-        # self.warning_frame.grid(row=2, column=0, sticky='nsew')
-        self.warning_text = tk.StringVar()
-        self.warning_label = ttk.Label(
-            self.mainframe,
-            textvariable=self.warning_text,
-            style='Warning.TLabel'
-        )
-        self.warning_label.grid(row=2, column=0, sticky='nsew')
+        main_layout.addWidget(paned_window, 1, 0, 1, -1)
+        main_layout.setRowStretch(1, 1)
+
+        self.warning_label = QtWidgets.QLabel()
+        self.warning_label.setWordWrap(True)
         self.update_warning()
 
-        self.lower_frame = ttk.Frame(self.mainframe, padding="0 5 0 0")  # W N E S
-        self.lower_frame.grid(row=3, column=0, sticky='nsew')
-        self.prefs_button = utils.ReturnButton(self.lower_frame, text='Preferences', command=self.prefs_dlg)
-        self.prefs_button.grid(row=0, column=0, sticky='nw')
-        self.stop_button = utils.ReturnButton(self.lower_frame, text='Cancel', command=self.close)
-        self.stop_button.grid(row=0, column=2, sticky='ne')
-        self.start_button = utils.ReturnButton(self.lower_frame, text='Proceed', command=self.start_parsing)
-        self.start_button.grid(row=0, column=3, sticky='ne')
-        self.start_button.focus_set()
+        main_layout.addWidget(self.warning_label, 2, 0, 1, -1)
 
-        self.lower_frame.rowconfigure(0, weight=0)
-        self.lower_frame.columnconfigure(0, weight=0)
-        self.lower_frame.columnconfigure(1, weight=1)
-        self.lower_frame.columnconfigure(2, weight=0)
-        self.lower_frame.columnconfigure(3, weight=0)
+        self.prefs_button = QtWidgets.QPushButton('Preferences')
+        self.prefs_button.clicked.connect(self.prefs_dlg)
+        self.stop_button = QtWidgets.QPushButton('Cancel')
+        self.stop_button.clicked.connect(lambda: QtWidgets.QApplication.exit(0))
+        self.ok_button = QtWidgets.QPushButton('Proceed')
+        self.ok_button.clicked.connect(self.start_parsing)
 
-        self.mainframe.rowconfigure(0, weight=0)
-        self.mainframe.rowconfigure(1, weight=1)
-        self.mainframe.rowconfigure(2, weight=0)
-        self.mainframe.rowconfigure(3, weight=0)
-        self.mainframe.columnconfigure(0, weight=1)
+        buttons_layout = QtWidgets.QHBoxLayout()
+        buttons_layout.addWidget(self.prefs_button)
+        buttons_layout.addStretch()
+        buttons_layout.addWidget(self.stop_button)
+        buttons_layout.addWidget(self.ok_button)
 
-    def close(self):
-        self.is_running = False
-        self.destroy()
+        main_layout.addLayout(buttons_layout, 3, 0, 1, -1)
+
+        self.show()
 
     def set_geometry(self):
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        geometry = {
-            'width': min(screen_width, 1024),
-            'height': min(screen_height, 600),
-        }
-        geometry['left'] = (screen_width // 2) - (geometry['width'] // 2)
-        geometry['top'] = (screen_height // 2) - (geometry['height'] // 2)
-        self.geometry(
-            "{}x{}+{}+{}".format(
-                geometry['width'],
-                geometry['height'],
-                geometry['left'],
-                geometry['top']
-            )
-        )
-        self.resizable(width=tk.TRUE, height=tk.TRUE)
+        self.setMinimumWidth(600)
+        self.setMinimumHeight(300)
+        screen = self.screen()
+        if not screen:
+            return
+        available_size = screen.availableSize()
+        screen_width = available_size.width()
+        screen_height = available_size.height()
+        width = min(screen_width, 1024)
+        if width < self.minimumWidth():
+            self.setMinimumWidth(width)
+        height = min(screen_height, 600)
+        if height < self.minimumHeight():
+            self.setMinimumHeight(height)
+        left = screen_width // 2 - width // 2
+        top = screen_height // 2 - height // 2
+        self.setGeometry(left, top, width, height)
 
-    def set_fonts(self):
-        self.heading_label_font = tkfont.nametofont('TkDefaultFont').copy()
-        label_font_options = self.heading_label_font.actual()
-        self.heading_label_font.configure(size=label_font_options['size'] + 2)
-        self.text_font = tkfont.nametofont('TkTextFont').copy()
-
-    def set_theme(self):
-        if sys.platform.startswith('linux'):
-            if self.prefs.get('tktheme') == 'clearlooks':
-                self.tk.eval(fr'''
-package ifneeded ttk::theme::clearlooks 0.1 \
-    [list source [file join {(utils.SCRIPT_DIR / 'clearlooks').as_posix()} clearlooks.tcl]]
-'''
-                )
-                self.tk.call('package', 'require', 'ttk::theme::clearlooks', '0.1')
-            if self.prefs.get('tktheme') and self.prefs.get('tktheme') in self.style.theme_names():
-                self.style.theme_use(self.prefs['tktheme'])
-
-    def set_styles(self):
-        dummy_text = tk.Text(self)
-        bg = dummy_text['background']
-        fg = dummy_text['foreground']
-        dummy_text.destroy()
-        is_dark_text_bg = False
-        if re.fullmatch(r'#[0-9A-Fa-f]{6}', bg):
-            for channel in range(1, len(bg), 2):
-                if int(bg[channel:channel+2], 16) > 96:
-                    break
-            else:  # for-else
-                is_dark_text_bg = True
-        # text colors and background for text widgets header
-        if is_dark_text_bg:
-            self.text_heading_bg = '#414649'
-            self.text_heading_fg = '#F2F2F2'
-        else:
-            self.text_heading_bg = '#F2F2F2'
-            self.text_heading_fg = '#0D0D0D'
-        self.style.configure(
-            'InText.TCheckbutton',
-            background=bg,
-            foreground=fg
-        )
-        self.style.configure(
-            'Classes.InText.TCheckbutton',
-            wraplength=self.winfo_width() // 2 - 50
-        )
-        self.style.configure(
-            'Ids.InText.TCheckbutton',
-            wraplength=self.winfo_width() // 2 - 50
-        )
-        if is_dark_text_bg:
-            self.style.map(
-                'InText.TCheckbutton',
-                background=[('hover', self.text_heading_fg)],
-                foreground=[('hover', self.text_heading_bg)]
-            )
-        self.style.configure(
-            'Top.TLabel',
-            font=self.heading_label_font,
-            padding=20,
-            wraplength=self.winfo_width() - 50
-        )
-        self.style.configure(
-            'Warning.TLabel',
-            padding='0 5 0 0',
-            wraplength=self.winfo_width() - 50
-        )
-
-    def update_full_wraplength(self, event):
-        self.style.configure(
-            'Top.TLabel',
-            wraplength=event.width - 50
-        )
-        self.style.configure(
-            'Warning.TLabel',
-            wraplength=event.width - 50
-        )
-
-    def update_paned_wraplength(self, event, classname):
-        self.style.configure(
-            '{}.TCheckbutton'.format(classname),
-            wraplength=event.width - (40 + self.scroll_classes_list.winfo_reqwidth())
-        )
-
-    def start_parsing(self, event=None):
-        try:
-            self.populate_text_widgets(core.find_attributes_to_delete(self.bk, self.prefs))
-        except core.CSSParsingError as E:
-            msgbox.showerror('Error while parsing stylesheets', '{}\nThe plugin will terminate.'.format(E))
-            self.close()
-        except core.XMLParsingError as E:
-            msgbox.showerror('Error while parsing an XML or XHTML file', '{}\nThe plugin will terminate.'.format(E))
-            self.close()
-        else:
-            self.top_label_text.set(
-                'Select classes and ids that you want to remove from your xhtml, '
-                'then press again the "Proceed" button.'
-            )
-            self.prefs_button.configure(state=tk.DISABLED)
-            self.warning_text.set(
-                'Search for classes and ids to remove has been done on {} files.'.format(
-                    'selected' if self.prefs['parse_only_selected_files'] else 'all xhtml'
-                )
-            )
-            self.start_button['command'] = self.delete_selected_attributes
-            self.start_button.bind('<Return>', self.delete_selected_attributes)
-            self.start_button.bind('<KP_Enter>', self.delete_selected_attributes)
-
-    def delete_selected_attributes(self, event=None):
-        for attr_type, attributes in self.check_undefined_attributes.items():
-            for attribute, has_to_be_deleted in attributes.items():
-                if not has_to_be_deleted.get():
-                    self.undefined_attributes[attr_type].discard(attribute)
-        core.delete_xhtml_attributes(self.bk, self.undefined_attributes, self.prefs)
-        self.success = True
-        # reset selected files on success
-        self.prefs['selected_files'] = []
-        self.bk.savePrefs(self.prefs)
-        self.close()
-
-    def toggle_all_classes(self):
-        if self.toggle_classes.get() == 1:
-            self.toggle_classes_str.set('Unselect all')
-            for is_selected in self.check_undefined_attributes['classes'].values():
-                is_selected.set(True)
-        else:
-            self.toggle_classes_str.set('Select all')
-            for is_selected in self.check_undefined_attributes['classes'].values():
-                is_selected.set(False)
-
-    def toggle_all_ids(self):
-        if self.toggle_ids.get() == 1:
-            self.toggle_ids_str.set('Unselect all')
-            for is_selected in self.check_undefined_attributes['ids'].values():
-                is_selected.set(True)
-        else:
-            self.toggle_ids_str.set('Select all')
-            for is_selected in self.check_undefined_attributes['ids'].values():
-                is_selected.set(False)
-
-    def populate_text_widgets(self, attributes_list: dict):
-        self.undefined_attributes = attributes_list
-        self.classes_text.config(state=tk.NORMAL)
-        self.classes_text.insert(
-            'insert',
-            'Classes found in XHTML without references in CSS.\nSelect the ones you want to delete:\n',
-            'heading'
-        )
-        self.classes_text.insert('insert', '\n')
-        if attributes_list['classes']:
-            self.toggle_classes = tk.BooleanVar()
-            self.toggle_classes_str = tk.StringVar()
-            self.toggle_classes_str.set('Unselect all')
-            self.check_toggle_classes = ttk.Checkbutton(
-                self.classes_text,
-                textvariable=self.toggle_classes_str,
-                variable=self.toggle_classes,
-                onvalue=True, offvalue=False,
-                command=self.toggle_all_classes,
-                cursor="arrow",
-                style='Classes.InText.TCheckbutton'
-            )
-            self.add_bindtag(self.check_toggle_classes, self.classes_text)
-            self.classes_text.window_create('end', window=self.check_toggle_classes, padx=4, pady=2)
-            self.classes_text.insert('end', '\n\n')
-            self.toggle_classes.set(True)
-            
-            for class_ in attributes_list['classes']:
-                occurrences = ', '.join(
-                    '{} ({})'.format(utils.href_to_basename(filename), times) for filename, times in
-                    attributes_list['info_classes'][class_].items()
-                )
-                self.check_undefined_attributes['classes'][class_] = tk.BooleanVar()
-                class_checkbutton = ttk.Checkbutton(
-                    self.classes_text,
-                    text='{}  -  Found in: {}'.format(class_, occurrences),
-                    variable=self.check_undefined_attributes['classes'][class_],
-                    onvalue=True, offvalue=False,
-                    cursor='arrow',
-                    style='Classes.InText.TCheckbutton'
-                )
-                self.add_bindtag(class_checkbutton, self.classes_text)
-                self.classes_text.window_create('end', window=class_checkbutton, padx=4, pady=2)
-                self.classes_text.insert('end', '\n')
-                self.check_undefined_attributes['classes'][class_].set(True)
-        else:
-            self.classes_text.insert('end', 'I found no unreferenced classes.', 'body')
-        self.classes_text.config(state=tk.DISABLED)
-
-        self.ids_text.config(state=tk.NORMAL)
-        self.ids_text.insert(
-            'insert',
-            'Ids found in XHTML without references in CSS nor in fragment identifiers.\n'
-            'Select the ones you want to delete:\n',
-            'heading'
-        )
-        self.ids_text.insert('insert', '\n')
-        if attributes_list['ids']:
-            self.toggle_ids = tk.BooleanVar()
-            self.toggle_ids_str = tk.StringVar()
-            self.toggle_ids_str.set('Unselect all')
-            self.check_toggle_ids = ttk.Checkbutton(
-                self.ids_text,
-                textvariable=self.toggle_ids_str,
-                variable=self.toggle_ids,
-                onvalue=True, offvalue=False,
-                command=self.toggle_all_ids,
-                cursor="arrow",
-                style='Ids.InText.TCheckbutton'
-            )
-            self.add_bindtag(self.check_toggle_ids, self.ids_text)
-            self.ids_text.window_create('end', window=self.check_toggle_ids, padx=4, pady=2)
-            self.ids_text.insert('end', '\n\n')
-            self.toggle_ids.set(True)
-            for id_ in attributes_list['ids']:
-                occurrences = ', '.join(
-                    '{} ({})'.format(filename, times) for filename, times in
-                    attributes_list['info_ids'][id_].items()
-                )
-                self.check_undefined_attributes['ids'][id_] = tk.BooleanVar()
-                id_checkbutton = ttk.Checkbutton(
-                    self.ids_text,
-                    text='{}  -  Found in: {}'.format(id_, occurrences),
-                    variable=self.check_undefined_attributes['ids'][id_],
-                    onvalue=True, offvalue=False,
-                    cursor='arrow',
-                    style='Ids.InText.TCheckbutton'
-                )
-                self.add_bindtag(id_checkbutton, self.ids_text)
-                self.ids_text.window_create('end', window=id_checkbutton, padx=4, pady=2)
-                self.ids_text.insert('end', '\n')
-                self.check_undefined_attributes['ids'][id_].set(True)
-        else:
-            self.ids_text.insert('end', 'I found no unreferenced ids.', 'body')
-        self.ids_text.config(state=tk.DISABLED)
-
-    def get_prefs(self):
-        prefs = self.bk.getPrefs()
-
-        prefs.defaults['parse_only_selected_files'] = False
-        prefs.defaults['selected_files'] = []
-        prefs.defaults['fragid_container_attrs'] = []  # if empty, use core.XHTMLAttributes
-        prefs.defaults['idref_container_attrs'] = []  # if empty, use core.XHTMLAttributes
-        prefs.defaults['idref_list_container_attrs'] = []  # if empty use core.XHTMLAttributes
-        prefs.defaults['tktheme'] = 'clearlooks'
-        prefs.defaults['update_prefs_defaults'] = 0
-
-        if prefs['update_prefs_defaults'] == 0:
-            if prefs['fragid_container_attrs']:
-                for attr in core.XHTMLAttributes.fragid_container_attrs[3:]:
-                    if attr not in prefs['fragid_container_attrs']:
-                        prefs['fragid_container_attrs'].append(attr)
-            prefs['update_prefs_defaults'] = 1
-
-        return prefs
-
-    def prefs_dlg(self):
-        w = PrefsDialog(self, self.bk)
-        self.wait_window(w)
-        self.update_warning()
-
-    def update_warning(self):
-        self.warning_text.set(
+    def update_warning(self, event=None):
+        self.warning_label.setText(
             '{} files will be searched for classes and ids to remove. '
             'Open the Preferences pane to update this option.'.format(
                 'Only selected' if self.prefs['parse_only_selected_files'] else 'All xhtml'
             )
         )
 
+    def prefs_dlg(self, event=None):
+        w = PrefsDialog(self, self.bk, self.prefs)
+        w.accepted.connect(self.update_warning)
+        w.open()
 
-class PrefsDialog(tk.Toplevel, WidgetMixin):
+    def start_parsing(self, event=None):
+        try:
+            attributes_to_delete = core.find_attributes_to_delete(self.bk, self.prefs)
+        except core.CSSParsingError as E:
+            QtWidgets.QMessageBox(
+                QtWidgets.QMessageBox.Critical,
+                'Error while parsing stylesheets',
+                f'{E}\nThe plugin will terminate.',
+                QtWidgets.QMessageBox.Ok,
+                self
+            ).exec()
+            QtWidgets.QApplication.exit(2)
+        except core.XMLParsingError as E:
+            QtWidgets.QMessageBox(
+                QtWidgets.QMessageBox.Critical,
+                'Error while parsing an XML or XHTML file',
+                f'{E}\nThe plugin will terminate.',
+                QtWidgets.QMessageBox.Ok,
+                self
+            ).exec()
+            QtWidgets.QApplication.exit(2)
+        else:
+            self.populate_text_widgets(attributes_to_delete)
+            self.top_label.setText(
+                'Select classes and ids that you want to remove from your xhtml, '
+                'then press again the "Proceed" button.'
+            )
+            self.prefs_button.setEnabled(False)
+            self.warning_label.setText(
+                'The search for classes and ids to remove has been done on {} files.'.format(
+                    'selected' if self.prefs['parse_only_selected_files'] else 'all xhtml'
+                )
+            )
+            if self.ok_button.clicked.connect(self.start_parsing):
+                self.ok_button.clicked.disconnect()
+            self.ok_button.clicked.connect(self.delete_selected_attributes)
+
+    def populate_text_widgets(self, attributes_list: dict):
+        self.undefined_attributes = attributes_list
+
+        margins_checkboxes = (8, 6, 8, 6)
+        margins_headers = (8, 12, 8, 0)
+
+        classes_header = QtWidgets.QLabel(
+            'Classes found in XHTML without references in CSS.\n' \
+            'Select the ones you want to delete:\n',
+        )
+        classes_header.setWordWrap(True)
+        classes_header.setContentsMargins(*margins_headers)
+        classes_header.setAutoFillBackground(True)
+        self.classes_frame_layout.addWidget(classes_header)
+
+        palette = classes_header.palette()
+        bgColor = palette.color(classes_header.backgroundRole())
+        alternateBgColor = palette.color(QtGui.QPalette.AlternateBase)
+        if bgColor.getRgb() == alternateBgColor.getRgb():
+            alternateBgColor = palette.color(QtGui.QPalette.Base)
+        palette.setColor(classes_header.backgroundRole(), alternateBgColor)
+        classes_header.setPalette(palette)
+
+        classes_header_separator = QtWidgets.QFrame()
+        classes_header_separator.setFrameShape(QtWidgets.QFrame.HLine)
+        classes_header_separator.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.classes_frame_layout.addWidget(classes_header_separator)
+
+        if attributes_list['classes']:
+            self.toggle_classes = WrappingCheckBox(
+                'Select / Unselect all',
+                margins=(8, 12, 8, 12)
+            )
+            self.toggle_classes.setChecked(True)
+            self.toggle_classes.stateChanged().connect(self.toggle_all_classes)
+            self.classes_frame_layout.addWidget(self.toggle_classes)
+            
+            self._display_attributes_checkboxes(
+                attributes_list,
+                'classes',
+                self.classes_frame_layout,
+                margins_checkboxes,
+                alternateBgColor
+            )
+        else:
+            no_classes_label = QtWidgets.QLabel('I found no unreferenced classes.')
+            no_classes_label.setWordWrap(True)
+            no_classes_label.setContentsMargins(*margins_checkboxes)
+            self.classes_frame_layout.addWidget(no_classes_label)
+
+        classes_bottom_separator = QtWidgets.QFrame()
+        classes_bottom_separator.setFrameShape(QtWidgets.QFrame.HLine)
+        classes_bottom_separator.setFrameShadow(QtWidgets.QFrame.Raised)
+        classes_bottom_separator.setLineWidth(0)
+        classes_bottom_separator.setMidLineWidth(1)
+        self.classes_frame_layout.addWidget(classes_bottom_separator)
+
+        self.classes_frame_layout.addStretch()
+
+        ids_header = QtWidgets.QLabel(
+            'Ids found in XHTML without references in CSS nor in other XHTML or XML files.\n' \
+            'Select the ones you want to delete:\n',
+        )
+        ids_header.setWordWrap(True)
+        ids_header.setContentsMargins(*margins_headers)
+        ids_header.setAutoFillBackground(True)
+        self.ids_frame_layout.addWidget(ids_header)
+
+        palette = ids_header.palette()
+        palette.setColor(ids_header.backgroundRole(), alternateBgColor)
+        ids_header.setPalette(palette)
+
+        ids_header_separator = QtWidgets.QFrame()
+        ids_header_separator.setFrameShape(QtWidgets.QFrame.HLine)
+        ids_header_separator.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.ids_frame_layout.addWidget(ids_header_separator)
+
+        if attributes_list['ids']:
+            self.toggle_ids = WrappingCheckBox(
+                'Select / Unselect all',
+                margins=(8, 12, 8, 12)
+            )
+            self.toggle_ids.setChecked(True)
+            self.toggle_ids.stateChanged().connect(self.toggle_all_ids)
+            self.ids_frame_layout.addWidget(self.toggle_ids)
+
+            self._display_attributes_checkboxes(
+                attributes_list,
+                'ids',
+                self.ids_frame_layout,
+                margins_checkboxes,
+                alternateBgColor
+            )
+        else:
+            no_ids_label = QtWidgets.QLabel('I found no unreferenced ids.')
+            no_ids_label.setWordWrap(True)
+            no_ids_label.setContentsMargins(*margins_checkboxes)
+            self.ids_frame_layout.addWidget(no_ids_label)
+
+        ids_bottom_separator = QtWidgets.QFrame()
+        ids_bottom_separator.setFrameShape(QtWidgets.QFrame.HLine)
+        ids_bottom_separator.setFrameShadow(QtWidgets.QFrame.Raised)
+        ids_bottom_separator.setLineWidth(0)
+        ids_bottom_separator.setMidLineWidth(1)
+        self.ids_frame_layout.addWidget(ids_bottom_separator)
+
+        self.ids_frame_layout.addStretch()
+
+    def _display_attributes_checkboxes(self, attr_list, attr_type, layout, margins, alternateBgColor):
+        for i, attr in enumerate(attr_list[attr_type]):
+            occurrences = ', '.join(
+                f'{utils.href_to_basename(filename)} ({times})' \
+                for filename, times in attr_list[f'info_{attr_type}'][attr].items()
+            )
+            checkbox = WrappingCheckBox(
+                f'{attr}  -  Found in: {occurrences}',
+                margins=margins,
+                minWidthToBreakWords=self.minimumWidth() // 2 - 40,
+            )
+            checkbox.setChecked(True)
+            if i % 2 == 0:
+                palette = checkbox.palette()
+                palette.setColor(checkbox.backgroundRole(), alternateBgColor)
+                checkbox.setPalette(palette)
+            self.check_undefined_attributes[f'{attr_type}'][attr] = checkbox
+            layout.addWidget(checkbox)
+
+    def toggle_all_classes(self, event=None):
+        checked = self.toggle_classes.isChecked()
+        for class_, checkbox in self.check_undefined_attributes['classes'].items():
+            checkbox.setChecked(checked)
+
+    def toggle_all_ids(self, event=None):
+        checked = self.toggle_ids.isChecked()
+        for id_, checkbox in self.check_undefined_attributes['ids'].items():
+            checkbox.setChecked(checked)
+
+    def delete_selected_attributes(self, event=None):
+        for attr_type, attributes in self.check_undefined_attributes.items():
+            for attribute, has_to_be_deleted in attributes.items():
+                if not has_to_be_deleted.isChecked():
+                    self.undefined_attributes[attr_type].discard(attribute)
+        try:
+            core.delete_xhtml_attributes(self.bk, self.undefined_attributes, self.prefs)
+        finally:
+            # reset selected files on success
+            self.prefs['selected_files'] = []
+            self.bk.savePrefs(self.prefs)
+        QtWidgets.QApplication.exit(0)
+
+
+class PrefsDialog(QtWidgets.QDialog):
 
     def __init__(self, parent=None, bk=None, prefs=None):
         self.bk = bk
-        if prefs:
-            self.prefs = prefs
-        else:
-            self.prefs = parent.prefs
+        self.prefs = prefs
 
         super().__init__(parent)
-        self.transient(parent)
-        self.title('Preferences')
-        self.geometry('600x600')
-        self.resizable(width=tk.TRUE, height=tk.TRUE)
-        self.protocol('WM_DELETE_WINDOW', self.destroy)
+        self.setWindowTitle('Preferences')
+        self.setMinimumWidth(600)
+        self.setMinimumHeight(600)
 
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
-        self.mainframe = ttk.Frame(self, padding="12 12 12 12")  # W N E S
-        self.mainframe.grid(column=0, row=0, sticky='nwes')
-        self.mainframe.bind(
-            '<Configure>',
-            self.update_full_width
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(12, 12, 12, 12)
+
+        self.parse_only_selected_files = WrappingCheckBox(
+            'Search for classes and ids to remove only in selected files',
+            margins=(0, 6, 0, 6)
         )
 
-        self.master.style.configure(
-            'Preferences.TCheckbutton',
-            wraplength=self.winfo_width() - 45
-        )
-        self.parse_only_selected_value = tk.BooleanVar()
-        self.parse_only_selected_check = ttk.Checkbutton(
-            self.mainframe,
-            text='Search for classes and ids to remove only in selected files',
-            variable=self.parse_only_selected_value,
-            onvalue=True, offvalue=False,
-            style='Preferences.TCheckbutton'
-        )
-        self.parse_only_selected_check.grid(row=0, column=0, sticky='nsew')
-        self.selected_files_frame = ttk.Frame(self.mainframe)
-        self.selected_files_frame.grid(row=1, column=0, sticky='nsew')
-        self.selected_files_value = tk.StringVar()
-        self.selected_files_scroll = ttk.Scrollbar(self.selected_files_frame, orient=tk.VERTICAL)
-        self.selected_files_list = tk.Listbox(
-            self.selected_files_frame,
-            activestyle='dotbox',
-            selectmode=tk.MULTIPLE,
-            yscrollcommand=self.selected_files_scroll.set,
-            listvariable=self.selected_files_value
-        )
-        self.selected_files_value.set(' '.join('"{}"'.format(href) for id_, href in self.bk.text_iter()))
-        self.selected_files_font = tkfont.Font(font=self.selected_files_list['font'])
-        self.selected_files_list.grid(sticky='nsew')
-        self.selected_files_scroll.grid(row=0, column=1, sticky='nsew')
-        self.selected_files_scroll['command'] = self.selected_files_list.yview
-        # self.bind_to_mousewheel(self.selected_files_list)
-        self.selected_files_frame.rowconfigure(0, weight=1)
-        self.selected_files_frame.columnconfigure(0, weight=1)
+        main_layout.addWidget(self.parse_only_selected_files)
 
-        self.fragid_attrs_label = ttk.Label(
-            self.mainframe,
-            text='Comma separated lists of attributes that will be used to search for:\n\n- fragment identifiers '
-                 '(an empty list will default to {}):'.format(', '.join(core.XHTMLAttributes.fragid_container_attrs)),
-            wraplength=self.mainframe.winfo_width() - 30,
-            padding='0 18 0 6'
+        self.selected_files = QtWidgets.QListWidget()
+        self.selected_files.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+        self.selected_files.addItems(href for id_, href in self.bk.text_iter())
+        main_layout.addWidget(self.selected_files, stretch=1)
+
+        fragid_attrs_label = QtWidgets.QLabel(
+            'Comma separated lists of attributes that will be used to search for:\n\n' \
+            '- fragment identifiers (an empty list will default to ' \
+            f'{', '.join(core.XHTMLAttributes.fragid_container_attrs)}):'
         )
-        self.fragid_attrs_label.grid(row=2, column=0, sticky='nsew')
-        self.fragid_attrs_value = tk.StringVar()
-        self.fragid_attrs_entry = ttk.Entry(
-            self.mainframe,
-            textvariable=self.fragid_attrs_value,
-            exportselection=0
+        fragid_attrs_label.setWordWrap(True)
+        fragid_attrs_label.setContentsMargins(0, 18, 0, 6)
+        self.fragid_attrs_edit = QtWidgets.QLineEdit()
+        main_layout.addWidget(fragid_attrs_label)
+        main_layout.addWidget(self.fragid_attrs_edit)
+
+        idref_attrs_label = QtWidgets.QLabel(
+            '- a single id reference (an empty list will default to ' \
+            f'{', '.join(core.XHTMLAttributes.idref_container_attrs)}):'
         )
-        self.fragid_font = tkfont.Font(font=self.fragid_attrs_entry['font'])
-        fragid_entry_width = self.mainframe.winfo_reqwidth() // self.fragid_font.measure('m')
-        self.fragid_attrs_entry.configure(width=fragid_entry_width)
-        self.fragid_attrs_entry.grid(row=3, column=0, sticky='nsew')
+        idref_attrs_label.setWordWrap(True)
+        idref_attrs_label.setContentsMargins(0, 18, 0, 6)
+        self.idref_attrs_edit = QtWidgets.QLineEdit()
+        main_layout.addWidget(idref_attrs_label)
+        main_layout.addWidget(self.idref_attrs_edit)
 
-        self.idref_attrs_label = ttk.Label(
-            self.mainframe,
-            text='- a single id reference '
-                 '(an empty list will default to {}):'.format(', '.join(core.XHTMLAttributes.idref_container_attrs)),
-            wraplength=self.mainframe.winfo_width() - 30,
-            padding='0 18 0 6'
+        idref_list_attrs_label = QtWidgets.QLabel(
+            '- a list of id references (an empty list will default to '
+            f'{', '.join(core.XHTMLAttributes.idref_list_container_attrs)}):'
         )
-        self.idref_attrs_label.grid(row=4, column=0, sticky='nsew')
-        self.idref_attrs_value = tk.StringVar()
-        self.idref_attrs_entry = ttk.Entry(
-            self.mainframe,
-            textvariable=self.idref_attrs_value,
-            exportselection=0,
-            width=fragid_entry_width
+        idref_list_attrs_label.setWordWrap(True)
+        idref_list_attrs_label.setContentsMargins(0, 18, 0, 6)
+        self.idref_list_attrs_edit = QtWidgets.QLineEdit()
+        main_layout.addWidget(idref_list_attrs_label)
+        main_layout.addWidget(self.idref_list_attrs_edit)
+
+        button_box = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok|QtWidgets.QDialogButtonBox.Cancel
         )
-        self.idref_attrs_entry.grid(row=5, column=0, sticky='nsew')
-
-        self.idref_list_attrs_label = ttk.Label(
-            self.mainframe,
-            text='- a list of id references '
-                 '(an empty list will default to {}):'.format(', '.join(core.XHTMLAttributes.idref_list_container_attrs)),
-            wraplength=self.mainframe.winfo_width() - 30,
-            padding='0 18 0 6'
-        )
-        self.idref_list_attrs_label.grid(row=6, column=0, sticky='nsew')
-        self.idref_list_attrs_value = tk.StringVar()
-        self.idref_list_attrs_entry = ttk.Entry(
-            self.mainframe,
-            textvariable=self.idref_list_attrs_value,
-            exportselection=0,
-            width=fragid_entry_width
-        )
-        self.idref_list_attrs_entry.grid(row=7, column=0, sticky='nsew')
-
-        self.lower_frame = ttk.Frame(self.mainframe, padding="0 12 0 0")
-        self.lower_frame.grid(row=8, column=0, sticky='nsew')
-
-        self.cancel_button = utils.ReturnButton(self.lower_frame, text='Cancel', command=self.destroy)
-        self.cancel_button.grid(row=0, column=1, sticky='ne')
-        self.ok_button = utils.ReturnButton(self.lower_frame, text='OK', command=self.save_and_proceed)
-        self.ok_button.grid(row=0, column=2, sticky='ne')
-
-        self.lower_frame.rowconfigure(0, weight=0)
-        self.lower_frame.columnconfigure(0, weight=1)
-        self.lower_frame.columnconfigure(1, weight=0)
-        self.lower_frame.columnconfigure(2, weight=0)
-
-        self.mainframe.rowconfigure(1, weight=1)
-        self.mainframe.columnconfigure(0, weight=1)
-
-        self.ok_button.focus_set()
-        self.grab_set()
+        button_box.accepted.connect(self.save_and_proceed)
+        button_box.rejected.connect(self.reject)
+        main_layout.addWidget(button_box)
 
         self.get_initial_values()
 
     def get_initial_values(self):
         if self.prefs.get('fragid_container_attrs'):
-            self.fragid_attrs_value.set(', '.join(self.prefs['fragid_container_attrs']))
+            self.fragid_attrs_edit.setText(', '.join(self.prefs['fragid_container_attrs']))
         else:
-            self.fragid_attrs_value.set(', '.join(core.XHTMLAttributes.fragid_container_attrs))
+            self.fragid_attrs_edit.setText(', '.join(core.XHTMLAttributes.fragid_container_attrs))
         if self.prefs.get('idref_container_attrs'):
-            self.idref_attrs_value.set(', '.join(self.prefs['idref_container_attrs']))
+            self.idref_attrs_edit.setText(', '.join(self.prefs['idref_container_attrs']))
         else:
-            self.idref_attrs_value.set(', '.join(core.XHTMLAttributes.idref_container_attrs))
+            self.idref_attrs_edit.setText(', '.join(core.XHTMLAttributes.idref_container_attrs))
         if self.prefs.get('idref_list_container_attrs'):
-            self.idref_list_attrs_value.set(', '.join(self.prefs['idref_list_container_attrs']))
+            self.idref_list_attrs_edit.setText(', '.join(self.prefs['idref_list_container_attrs']))
         else:
-            self.idref_list_attrs_value.set(', '.join(core.XHTMLAttributes.idref_list_container_attrs))
-        if self.prefs.get('parse_only_selected_files'):
-            self.parse_only_selected_value.set(1)
-        else:
-            self.parse_only_selected_value.set(0)
+            self.idref_list_attrs_edit.setText(', '.join(core.XHTMLAttributes.idref_list_container_attrs))
+        self.parse_only_selected_files.setChecked(
+            bool(self.prefs.get('parse_only_selected_files'))
+        )
         if self.prefs.get('selected_files'):
             selected_files = [self.bk.href_to_id(sel) for sel in self.prefs.get('selected_files')]
         else:
             selected_files = [selected[1] for selected in self.bk.selected_iter()]
         if selected_files:
             selected_files_names = [self.bk.id_to_href(sel) for sel in selected_files]
-            lines = self.selected_files_list.get(0, self.selected_files_list.size()-1)
-            for index, name in enumerate(lines):
-                if name in selected_files_names:
-                    self.selected_files_list.selection_set(index)
+            for item in (self.selected_files.item(i) for i in range(self.selected_files.count())):
+                if item.text() in selected_files_names:
+                    item.setSelected(True)
 
     def save_and_proceed(self, event=None):
         attrs_names = {
-            'fragid_container_attrs': self.fragid_attrs_value.get(),
-            'idref_container_attrs': self.idref_attrs_value.get(),
-            'idref_list_container_attrs': self.idref_list_attrs_value.get(),
+            'fragid_container_attrs': self.fragid_attrs_edit.text(),
+            'idref_container_attrs': self.idref_attrs_edit.text(),
+            'idref_list_container_attrs': self.idref_list_attrs_edit.text(),
         }
         for k, v in attrs_names.items():
             self.prefs[k] = [attr.strip() for attr in v.split(',') if attr]
-        if self.parse_only_selected_value.get() == 1:
-            self.prefs['parse_only_selected_files'] = True
-        else:
-            self.prefs['parse_only_selected_files'] = False
+        self.prefs['parse_only_selected_files'] = self.parse_only_selected_files.isChecked()
+
         # reset selected_files in the prefs dictionary before saving: this value doesn't have to be saved permanently
         self.prefs['selected_files'] = []
         self.bk.savePrefs(self.prefs)
-        selected_files = [self.selected_files_list.get(i) for i in self.selected_files_list.curselection()]
+        selected_files = [item.text() for item in self.selected_files.selectedItems()]
         self.prefs['selected_files'] = selected_files
-        self.destroy()
-
-    def update_full_width(self, event=None):
-        self.fragid_attrs_label.configure(wraplength=event.width - 30)
-        self.idref_attrs_label.configure(wraplength=event.width - 30)
-        self.idref_list_attrs_label.configure(wraplength=event.width - 30)
-        fragid_entry_width = event.width // self.fragid_font.measure('0')
-        self.fragid_attrs_entry.configure(width=fragid_entry_width)
-        self.idref_attrs_entry.configure(width=fragid_entry_width)
-        self.idref_list_attrs_entry.configure(width=fragid_entry_width)
-        self.master.style.configure('Preferences.TCheckbutton', wraplength=event.width - 45)
+        self.accept()
