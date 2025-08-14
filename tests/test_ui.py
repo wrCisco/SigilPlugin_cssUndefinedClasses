@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
-# Copyright (c) 2020 Francesco Martini
+# Copyright (c) 2020, 2025 Francesco Martini
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,8 +16,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-# Code for MainWindowTestCase.pump_events comes from https://stackoverflow.com/a/49028688
 
 
 import os
