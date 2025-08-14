@@ -40,6 +40,7 @@ def get_prefs(bk):
     prefs.defaults['idref_list_container_attrs'] = []  # if empty use core.XHTMLAttributes
     prefs.defaults['tktheme'] = 'clearlooks'
     prefs.defaults['update_prefs_defaults'] = 0
+    prefs.defaults['quiet'] = False
 
     if prefs['update_prefs_defaults'] == 0:
         if prefs['fragid_container_attrs']:
@@ -53,9 +54,15 @@ def get_prefs(bk):
 
 def run(bk):
     prefs = get_prefs(bk)
-    app = PluginApplication([], bk, app_icon=PLUGIN_ICON, match_dark_palette=iswindows)
-    window = ui.MainWindow(bk, prefs)
-    success = not app.exec()
+    if prefs['quiet']:
+        prefs['parse_only_selected_files'] = False
+        attrs = core.find_attributes_to_delete(bk, prefs)
+        core.delete_xhtml_attributes(bk, attrs, prefs)
+        success = True
+    else:
+        app = PluginApplication([], bk, app_icon=PLUGIN_ICON, match_dark_palette=iswindows)
+        window = ui.MainWindow(bk, prefs)
+        success = not app.exec()
     return 0 if success else 1
 
 
