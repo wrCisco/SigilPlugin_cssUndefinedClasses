@@ -21,12 +21,43 @@
 import sys
 
 import ui
+import core
+
+
+def get_prefs(bk):
+    prefs = bk.getPrefs()
+
+    prefs.defaults['parse_only_selected_files'] = False
+    prefs.defaults['selected_files'] = []
+    prefs.defaults['fragid_container_attrs'] = []  # if empty, use core.XHTMLAttributes
+    prefs.defaults['idref_container_attrs'] = []  # if empty, use core.XHTMLAttributes
+    prefs.defaults['idref_list_container_attrs'] = []  # if empty use core.XHTMLAttributes
+    prefs.defaults['tktheme'] = 'clearlooks'
+    prefs.defaults['update_prefs_defaults'] = 0
+    prefs.defaults['quiet'] = False
+
+    if prefs['update_prefs_defaults'] == 0:
+        if prefs['fragid_container_attrs']:
+            for attr in core.XHTMLAttributes.fragid_container_attrs[3:]:
+                if attr not in prefs['fragid_container_attrs']:
+                    prefs['fragid_container_attrs'].append(attr)
+        prefs['update_prefs_defaults'] = 1
+
+    return prefs
 
 
 def run(bk):
-    plug = ui.MainWindow(bk)
-    plug.mainloop()
-    return 0 if plug.success else 1
+    prefs = get_prefs(bk)
+    if prefs['quiet']:
+        prefs['parse_only_selected_files'] = False
+        attrs = core.find_attributes_to_delete(bk, prefs)
+        core.delete_xhtml_attributes(bk, attrs, prefs)
+        success = True
+    else:
+        plug = ui.MainWindow(bk, prefs)
+        plug.mainloop()
+        success = plug.success
+    return 0 if success else 1
 
 
 def main():

@@ -57,9 +57,9 @@ class WidgetMixin(tk.BaseWidget):
 
 class MainWindow(tk.Tk, WidgetMixin):
 
-    def __init__(self, bk):
+    def __init__(self, bk, prefs):
         self.bk = bk
-        self.prefs = self.get_prefs()
+        self.prefs = prefs
         self.success = False  # True when the plugin terminates correctly
         self.undefined_attributes: Dict[str, Set[str]] = {}
         self.check_undefined_attributes = {
@@ -470,26 +470,6 @@ package ifneeded ttk::theme::clearlooks 0.1 \
         else:
             self.ids_text.insert('end', 'I found no unreferenced ids.', 'body')
         self.ids_text.config(state=tk.DISABLED)
-
-    def get_prefs(self):
-        prefs = self.bk.getPrefs()
-
-        prefs.defaults['parse_only_selected_files'] = False
-        prefs.defaults['selected_files'] = []
-        prefs.defaults['fragid_container_attrs'] = []  # if empty, use core.XHTMLAttributes
-        prefs.defaults['idref_container_attrs'] = []  # if empty, use core.XHTMLAttributes
-        prefs.defaults['idref_list_container_attrs'] = []  # if empty use core.XHTMLAttributes
-        prefs.defaults['tktheme'] = 'clearlooks'
-        prefs.defaults['update_prefs_defaults'] = 0
-
-        if prefs['update_prefs_defaults'] == 0:
-            if prefs['fragid_container_attrs']:
-                for attr in core.XHTMLAttributes.fragid_container_attrs[3:]:
-                    if attr not in prefs['fragid_container_attrs']:
-                        prefs['fragid_container_attrs'].append(attr)
-            prefs['update_prefs_defaults'] = 1
-
-        return prefs
 
     def prefs_dlg(self):
         w = PrefsDialog(self, self.bk)
