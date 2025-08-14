@@ -66,6 +66,7 @@ class MainWindow(QtWidgets.QWidget):
         classes_frame = QtWidgets.QWidget()
         classes_frame.setLayout(self.classes_frame_layout)
         classes_area.setWidget(classes_frame)
+        classes_area.setFocusPolicy(Qt.NoFocus)
 
         ids_area = QtWidgets.QScrollArea()
         ids_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -76,6 +77,7 @@ class MainWindow(QtWidgets.QWidget):
         ids_frame = QtWidgets.QWidget()
         ids_frame.setLayout(self.ids_frame_layout)
         ids_area.setWidget(ids_frame)
+        ids_area.setFocusPolicy(Qt.NoFocus)
 
         paned_layout.addWidget(classes_area)
         paned_layout.addWidget(ids_area)
@@ -91,10 +93,13 @@ class MainWindow(QtWidgets.QWidget):
 
         self.prefs_button = QtWidgets.QPushButton('Preferences')
         self.prefs_button.clicked.connect(self.prefs_dlg)
+        self.prefs_button.setAutoDefault(True)
         self.stop_button = QtWidgets.QPushButton('Cancel')
         self.stop_button.clicked.connect(lambda: QtWidgets.QApplication.exit(0))
+        self.stop_button.setAutoDefault(True)
         self.ok_button = QtWidgets.QPushButton('Proceed')
         self.ok_button.clicked.connect(self.start_parsing)
+        self.ok_button.setAutoDefault(True)
 
         buttons_layout = QtWidgets.QHBoxLayout()
         buttons_layout.addWidget(self.prefs_button)
@@ -105,6 +110,7 @@ class MainWindow(QtWidgets.QWidget):
         main_layout.addLayout(buttons_layout, 3, 0, 1, -1)
 
         self.show()
+        self.ok_button.setFocus()
 
     def set_geometry(self):
         self.setMinimumWidth(600)
