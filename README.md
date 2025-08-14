@@ -6,5 +6,3 @@ There is a graphical interface that allows the user to choose which classes and 
 The plugin's code is licensed under the [GPL v3](https://www.gnu.org/licenses/gpl-3.0.html), unless expressly stated otherwise for individual parts.
 
 The plugin_utils module is from Doug Massay's [sigil_plugin_utils](https://github.com/dougmassay/sigil-plugin-utils) repository and is licensed under the BSD 2-clause license.
-
-The clearlooks Tk theme is from [ttkthemes](https://github.com/TkinterEP/ttkthemes) and is licensed under the [Tcl/Tk licensing terms](https://www.tcl.tk/software/tcltk/license.html).
