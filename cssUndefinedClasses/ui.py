@@ -52,9 +52,7 @@ class MainWindow(QtWidgets.QWidget):
         self.top_label.setWordWrap(True)
         main_layout.addWidget(self.top_label, 0, 0, 1, -1)
 
-        paned_window = QtWidgets.QWidget()
-        paned_layout = QtWidgets.QHBoxLayout(paned_window)
-        paned_layout.setContentsMargins(0, 0, 0, 0)
+        paned_window = QtWidgets.QSplitter()
 
         classes_area = QtWidgets.QScrollArea()
         classes_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -79,8 +77,8 @@ class MainWindow(QtWidgets.QWidget):
         ids_area.setWidget(ids_frame)
         ids_area.setFocusPolicy(Qt.NoFocus)
 
-        paned_layout.addWidget(classes_area)
-        paned_layout.addWidget(ids_area)
+        paned_window.addWidget(classes_area)
+        paned_window.addWidget(ids_area)
 
         main_layout.addWidget(paned_window, 1, 0, 1, -1)
         main_layout.setRowStretch(1, 1)
