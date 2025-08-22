@@ -80,8 +80,9 @@ class MainWindowTestCase(unittest.TestCase):
             if isinstance(widget, WrappingCheckBox):
                 # in WrappingCheckBoxes, setting text on the label
                 # is delayed until the widget's show event and the
-                # text is stored in labelText
-                if widget.labelText.startswith('anotherclass'):
+                # text is split into words and stored
+                # in the label._text['words'] list.
+                if ''.join(widget.label._text['words']).startswith('anotherclass'):
                     widget.checkbox.click()
         self.assertNotEqual(self.root.check_undefined_attributes['classes'], {})
         for k, v in self.root.check_undefined_attributes['classes'].items():

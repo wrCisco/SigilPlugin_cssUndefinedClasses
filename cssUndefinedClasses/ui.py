@@ -113,7 +113,7 @@ class MainWindow(QtWidgets.QWidget):
         self.ok_button.setFocus()
 
     def set_geometry(self):
-        self.setMinimumWidth(600)
+        self.setMinimumWidth(400)
         self.setMinimumHeight(300)
         screen = self.screen()
         if not screen:
@@ -298,7 +298,6 @@ class MainWindow(QtWidgets.QWidget):
             checkbox = WrappingCheckBox(
                 f'{attr}  -  Found in: {occurrences}',
                 margins=margins,
-                minWidthToBreakWords=self.minimumWidth() // 2 - 40,
             )
             checkbox.setChecked(True)
             if i % 2 == 0:

@@ -14,15 +14,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import numbers
-
 from plugin_utils import QtWidgets, Qt, QtCore, QtGui
+from utils import tokenize_text, compute_words_length
 
 
 class WrappingCheckBox(QtWidgets.QWidget):
 
     def __init__(self, text="", margins=(0,0,0,0), spacing=12,
-                fillBackground=True, minWidthToBreakWords=None, parent=None):
+                fillBackground=True, parent=None):
         super().__init__(parent)
         
         self.layout = QtWidgets.QHBoxLayout(self)
@@ -32,24 +31,14 @@ class WrappingCheckBox(QtWidgets.QWidget):
         self.setAutoFillBackground(bool(fillBackground))
 
         self.checkbox = CheckBoxHighlighter(self)
-        
-        self.label = QtWidgets.QLabel()
-        self.label.setWordWrap(True)
-        self.labelText = text  # will be set as label's text in the showEvent method
-
-        if isinstance(minWidthToBreakWords, numbers.Real):
-            self.minWidthToBreakWords = minWidthToBreakWords
-        else:
-            self.minWidthToBreakWords = None
-        
-        # Make label clickable to toggle checkbox
-        self.label.mousePressEvent = self._on_label_click
+        self.label = WrappingLabel(text)
         
         self.layout.addWidget(self.checkbox)
         self.layout.addWidget(self.label, stretch=1)
 
-    def _on_label_click(self, event):
+    def mousePressEvent(self, event):
         """Handle label click to toggle checkbox"""
+        super().mousePressEvent(event)
         self.checkbox.toggle()
         self.checkbox.setFocus()
 
@@ -81,7 +70,7 @@ class WrappingCheckBox(QtWidgets.QWidget):
     
     def checkStateChanged(self):
         """Access to the checkbox's checkStateChanged signal"""
-        return self.checkbox.checkStateChanged
+        return self.stateChanged()
     
     def stateChanged(self):
         """Access to the checkbox's stateChanged signal (for older Qt compatibility)"""
@@ -94,48 +83,6 @@ class WrappingCheckBox(QtWidgets.QWidget):
     def toggled(self):
         """Access to the checkbox's toggled signal"""
         return self.checkbox.toggled
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        availableWidth = self.width() - 20
-        if self.minWidthToBreakWords and self.minWidthToBreakWords < availableWidth:
-            availableWidth = self.minWidthToBreakWords
-        self.label.setText(
-            self.break_long_words(self.labelText, availableWidth)
-        )
-        # self.label.updateGeometry()
-        # self.updateGeometry()
-
-    def break_long_words(self, text, availableWidth):
-        """Intersperse zero-width white spaces between the characters
-        of words longer than the available width."""
-        margins = self.layout.contentsMargins()
-        spacing = self.layout.spacing()
-        if self.checkbox.isVisible():
-            checkboxWidth = self.checkbox.width()
-        else:
-            checkboxWidth = self.checkbox.sizeHint().width()
-        minWidthToBreakWord = availableWidth \
-            - checkboxWidth \
-            - spacing \
-            - margins.left() \
-            - margins.right()
-        separators = ' -\u200B'  # just the most common ones
-        words = []
-        w_start = 0
-        for i, c in enumerate(text):
-            if c in separators:
-                if w_start != i:
-                    words.append(text[w_start:i])
-                words.append(c)
-                w_start = i + 1
-        if w_start <= i:
-            words.append(text[w_start:])
-        fontMetrics = QtGui.QFontMetricsF(self.label.font())
-        for i, w in enumerate(words):
-            if fontMetrics.horizontalAdvance(w) > minWidthToBreakWord:
-                words[i] = '\u200B'.join(w)
-        return ''.join(words)
 
 
 class CheckBoxHighlighter(QtWidgets.QCheckBox):
@@ -172,3 +119,55 @@ class CheckBoxHighlighter(QtWidgets.QCheckBox):
             palette = self.parent().label.palette()
             palette.setColor(self.parent().label.foregroundRole(), self.oldTextColor)
             self.parent().label.setPalette(palette)
+
+
+class WrappingLabel(QtWidgets.QLabel):
+
+    def __init__(self, text='', parent=None):
+        super().__init__('', parent)
+        self.setWordWrap(True)
+        self.setMinimumWidth(10)
+        self._text = self.preprocess_text(text)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.reset_text()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.reset_text()
+
+    def setText(self, text):
+        self._text = self.preprocess_text(text)
+        self.reset_text()
+
+    def setFont(self, font):
+        super().setFont(font)
+        self._text = self.preprocess_text(''.join(self._text['words']))
+        self.reset_text()
+
+    def reset_text(self):
+        super().setText(self.compose_text(self.width()))
+
+    def compose_text(self, availableWidth):
+        words = []
+        for i, word in enumerate(self._text['words']):
+            if availableWidth < self._text['lengths'][i]:
+                next_word = self._text['breakable_words'][i]
+            else:
+                next_word = word
+            words.append(next_word)
+        return ''.join(words)
+
+    def preprocess_text(self, text):
+        words = tokenize_text(text, QtCore.QTextBoundaryFinder.BoundaryType.Line)
+        lengths = compute_words_length(words, self.font())
+        breakable_words = []
+        for word in words:
+            graphemes = tokenize_text(word, QtCore.QTextBoundaryFinder.BoundaryType.Grapheme)
+            breakable_words.append('\u200B'.join(graphemes))
+        return {
+            'words': words,
+            'breakable_words': breakable_words,
+            'lengths': lengths,
+        }

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
-# Copyright (c) 2020 Francesco Martini
+# Copyright (c) 2020, 2025 Francesco Martini
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,35 +24,80 @@ Collection of utilities for Sigil plugins.
 
 import re
 import inspect
-from tkinter import ttk
 from pathlib import Path
+from functools import reduce
 
 
 SCRIPT_DIR = Path(inspect.getfile(inspect.currentframe())).resolve().parent
 
+try:
+    from tkinter import ttk
 
-class ReturnButton(ttk.Button):
-    """
-    Simple wrapper over ttk.Button to make buttons always
-    bound with <Return> and <KP_Enter> events (with the same
-    callback as the button's command option).
-    Only usable if the command's callback doesn't require arguments.
-    """
+    class ReturnButton(ttk.Button):
+        """
+        Simple wrapper over ttk.Button to make buttons always
+        bound with <Return> and <KP_Enter> events (with the same
+        callback as the button's command option).
+        Only usable if the command's callback doesn't require arguments.
+        """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.bind('<Return>', lambda e: self.invoke())
-        self.bind('<KP_Enter>', lambda e: self.invoke())
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.bind('<Return>', lambda e: self.invoke())
+            self.bind('<KP_Enter>', lambda e: self.invoke())
+
+    def tk_iterate_children(parent):
+        """
+        Yields every descendant of parent widget.
+        """
+        for child in parent.winfo_children():
+            yield child
+            for grandchild in tk_iterate_children(child):
+                yield grandchild
+except ModuleNotFoundError:
+    print("Tkinter/ttk module not found.")
 
 
-def tk_iterate_children(parent):
-    """
-    Yields every descendant of parent widget.
-    """
-    for child in parent.winfo_children():
-        yield child
-        for grandchild in tk_iterate_children(child):
-            yield grandchild
+try:
+    from plugin_utils import QtCore, QtGui
+
+    def tokenize_text(text, boundary_type, boundary_reasons=None):
+        """
+        Divide text in a list of tokens based on boundary_type.
+        boundary_type is a member of QtCore.QTextBoundaryFinder.BoundaryType
+        enum (Grapheme, Word, Line or Sentence)
+        """
+        if boundary_reasons is None:
+            boundary_reasons = reduce(
+                lambda x, y: x | y,
+                QtCore.QTextBoundaryFinder.BoundaryReasons,
+                QtCore.QTextBoundaryFinder.BreakOpportunity
+            )
+        tbf = QtCore.QTextBoundaryFinder(boundary_type, text)
+        tokens = []
+        pos = prev = tbf.position()
+        while True:
+            pos = tbf.toNextBoundary()
+            if pos == -1:
+                break
+            if pos != prev and boundary_reasons & tbf.boundaryReasons():
+                token = text[prev:pos]
+                tokens.append(text[prev:pos])
+                prev = pos
+        return tokens
+
+    def compute_words_length(words, font):
+        """
+        Compute the width of every word in words using the QFont font.
+        """
+        fontMetrics = QtGui.QFontMetricsF(font)
+        lengths = []
+        for word in words:
+            lengths.append(fontMetrics.horizontalAdvance(word))
+        return lengths
+
+except ModuleNotFoundError:
+    print("plugin_utils module (PyQt5/PySide6 integration) not found.")
 
 
 def style_rules(rules_collector):
