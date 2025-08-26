@@ -64,15 +64,26 @@ try:
     def tokenize_text(text, boundary_type, boundary_reasons=None):
         """
         Divide text in a list of tokens based on boundary_type.
-        boundary_type is a member of QtCore.QTextBoundaryFinder.BoundaryType
-        enum (Grapheme, Word, Line or Sentence)
+        boundary_types: Grapheme, Word, Line or Sentence
         """
         if boundary_reasons is None:
-            boundary_reasons = reduce(
-                lambda x, y: x | y,
-                QtCore.QTextBoundaryFinder.BoundaryReasons,
-                QtCore.QTextBoundaryFinder.BreakOpportunity
-            )
+            try:
+                # BreakOpportunity doesn't come up while iterating over BoundaryReason flags
+                # (PySide 6.9), so I use it as the initializer of the reduce function
+                boundary_reasons = reduce(
+                    lambda x, y: x | y,
+                    QtCore.QTextBoundaryFinder.BoundaryReasons,
+                    QtCore.QTextBoundaryFinder.BreakOpportunity
+                )
+            except TypeError:
+                # PyQt5 doesn't allow iterations over Qt enums
+                boundary_reasons = (
+                    QtCore.QTextBoundaryFinder.StartOfItem
+                    | QtCore.QTextBoundaryFinder.EndOfItem
+                    | QtCore.QTextBoundaryFinder.MandatoryBreak
+                    | QtCore.QTextBoundaryFinder.SoftHyphen
+                    | QtCore.QTextBoundaryFinder.BreakOpportunity
+                )
         tbf = QtCore.QTextBoundaryFinder(boundary_type, text)
         tokens = []
         pos = prev = tbf.position()
