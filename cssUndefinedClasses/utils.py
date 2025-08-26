@@ -26,11 +26,20 @@ import re
 import inspect
 from pathlib import Path
 from functools import reduce
+from collections.abc import Sequence, Mapping, Generator
+from typing import Any
+
+from bookcontainer import BookContainer
+try:
+    import css_parser
+except ImportError:
+    import cssutils as css_parser
 
 
-SCRIPT_DIR = Path(inspect.getfile(inspect.currentframe())).resolve().parent
+SCRIPT_DIR = Path(inspect.getfile(inspect.currentframe())).resolve().parent  # type: ignore
 
 try:
+    import tkinter as tk
     from tkinter import ttk
 
     class ReturnButton(ttk.Button):
@@ -46,7 +55,7 @@ try:
             self.bind('<Return>', lambda e: self.invoke())
             self.bind('<KP_Enter>', lambda e: self.invoke())
 
-    def tk_iterate_children(parent):
+    def tk_iterate_children(parent: tk.Widget|ttk.Widget) -> Generator[tk.Widget|ttk.Widget]:
         """
         Yields every descendant of parent widget.
         """
@@ -61,7 +70,10 @@ except ModuleNotFoundError:
 try:
     from plugin_utils import QtCore, QtGui
 
-    def tokenize_text(text, boundary_type, boundary_reasons=None):
+    def tokenize_text(
+            text: str,
+            boundary_type: QtCore.QTextBoundaryFinder.BoundaryType,
+            boundary_reasons: QtCore.QTextBoundaryFinder.BoundaryReason | None = None) -> list[str]:
         """
         Divide text in a list of tokens based on boundary_type.
         boundary_types: Grapheme, Word, Line or Sentence
@@ -72,17 +84,17 @@ try:
                 # (PySide 6.9), so I use it as the initializer of the reduce function
                 boundary_reasons = reduce(
                     lambda x, y: x | y,
-                    QtCore.QTextBoundaryFinder.BoundaryReasons,
-                    QtCore.QTextBoundaryFinder.BreakOpportunity
+                    QtCore.QTextBoundaryFinder.BoundaryReason,
+                    QtCore.QTextBoundaryFinder.BoundaryReason.BreakOpportunity
                 )
             except TypeError:
                 # PyQt5 doesn't allow iterations over Qt enums
                 boundary_reasons = (
-                    QtCore.QTextBoundaryFinder.StartOfItem
-                    | QtCore.QTextBoundaryFinder.EndOfItem
-                    | QtCore.QTextBoundaryFinder.MandatoryBreak
-                    | QtCore.QTextBoundaryFinder.SoftHyphen
-                    | QtCore.QTextBoundaryFinder.BreakOpportunity
+                    QtCore.QTextBoundaryFinder.BoundaryReason.StartOfItem
+                    | QtCore.QTextBoundaryFinder.BoundaryReason.EndOfItem
+                    | QtCore.QTextBoundaryFinder.BoundaryReason.MandatoryBreak
+                    | QtCore.QTextBoundaryFinder.BoundaryReason.SoftHyphen
+                    | QtCore.QTextBoundaryFinder.BoundaryReason.BreakOpportunity
                 )
         tbf = QtCore.QTextBoundaryFinder(boundary_type, text)
         tokens = []
@@ -97,7 +109,7 @@ try:
                 prev = pos
         return tokens
 
-    def compute_words_length(words, font):
+    def compute_words_length(words: Sequence[str], font: QtGui.QFont) -> list[float]:
         """
         Compute the width of every word in words using the QFont font.
         """
@@ -111,7 +123,7 @@ except ModuleNotFoundError:
     print("plugin_utils module (PyQt5/PySide6 integration) not found.")
 
 
-def style_rules(rules_collector):
+def style_rules(rules_collector: Sequence) -> Generator[css_parser.css.CSSRule]:
     """
     Yields style rules in a css parsed with css_parser/cssutils,
     both at top level and nested inside @media rules
@@ -134,7 +146,7 @@ def css_remove_escapes(val: str) -> str:
     return re.sub(r'\\([^a-fA-F0-9])', r'\1', val)
 
 
-def read_css(bk, css):
+def read_css(bk: BookContainer, css: str) -> str:
     """
     Before Sigil v0.9.7 css and js files were read as byte strings.
     """
@@ -144,7 +156,7 @@ def read_css(bk, css):
         return bk.readfile(css)
 
 
-def read_js(bk, js):
+def read_js(bk: BookContainer, js: str) -> str:
     """
     Before Sigil v0.9.7 css and js files were read as byte strings.
     """
@@ -154,7 +166,7 @@ def read_js(bk, js):
         return bk.readfile(js)
 
 
-def href_to_basename(href, ow=None):
+def href_to_basename(href: str, ow: Any = None) -> str | Any:
     """
     From the bookcontainer API. There's a typo until Sigil 0.9.5.
     """
@@ -163,7 +175,7 @@ def href_to_basename(href, ow=None):
     return ow
 
 
-def id_to_properties(bk, id, ow=None):
+def id_to_properties(bk: BookContainer, id: str, ow: Any = None) -> Mapping | Any:
     """
     From the bookcontainer API. Raise AttributeError until Sigil 1.3.0.
     """
@@ -173,7 +185,7 @@ def id_to_properties(bk, id, ow=None):
         return bk._w.map_id_to_properties(id, ow)
 
 
-def id_to_fallback(bk, id, ow=None):
+def id_to_fallback(bk: BookContainer, id: str, ow: Any = None) -> str | Any:
     """
     From the bookcontainer API. Raise AttributeError until Sigil 1.3.0.
     """
@@ -183,7 +195,7 @@ def id_to_fallback(bk, id, ow=None):
         return bk._w.map_id_to_fallback(id, ow)
 
 
-def id_to_overlay(bk, id, ow=None):
+def id_to_overlay(bk: BookContainer, id: str, ow: Any = None) -> str | Any:
     """
     From the bookcontainer API. Raise AttributeError until Sigil 1.3.0.
     """

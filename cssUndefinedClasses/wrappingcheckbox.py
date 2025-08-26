@@ -14,101 +14,118 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+from collections.abc import Sequence
+import typing
+
 from plugin_utils import QtWidgets, Qt, QtCore, QtGui
 from utils import tokenize_text, compute_words_length
 
 
+class ProcessedText(typing.TypedDict):
+    words: Sequence[str]
+    breakable_words: Sequence[str]
+    lengths: Sequence[float]
+
+
 class WrappingCheckBox(QtWidgets.QWidget):
 
-    def __init__(self, text="", margins=(0,0,0,0), spacing=12,
-                fillBackground=True, parent=None):
+    def __init__(
+            self,
+            text: str = "",
+            margins: Sequence[int] = (0,0,0,0),
+            spacing: int = 12,
+            fillBackground: bool = True,
+            parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         
-        self.layout = QtWidgets.QHBoxLayout(self)
-        self.layout.setContentsMargins(*margins)
-        self.layout.setSpacing(spacing)
+        self._layout = QtWidgets.QHBoxLayout(self)
+        self._layout.setContentsMargins(*margins)
+        self._layout.setSpacing(spacing)
 
         self.setAutoFillBackground(bool(fillBackground))
 
         self.checkbox = CheckBoxHighlighter(self)
         self.label = WrappingLabel(text)
         
-        self.layout.addWidget(self.checkbox)
-        self.layout.addWidget(self.label, stretch=1)
+        self._layout.addWidget(self.checkbox)
+        self._layout.addWidget(self.label, stretch=1)
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         """Handle label click to toggle checkbox"""
         super().mousePressEvent(event)
         self.checkbox.toggle()
         self.checkbox.setFocus()
 
-    def setText(self, text):
+    def setText(self, text: str) -> None:
         """Set the text displayed in the label"""
         self.label.setText(text)
     
-    def text(self):
+    def text(self) -> str:
         """Get the text from the label"""
         return self.label.text()
     
-    def setChecked(self, checked):
+    def setChecked(self, checked: bool) -> None:
         """Set checkbox checked state"""
         self.checkbox.setChecked(checked)
     
-    def isChecked(self):
+    def isChecked(self) -> bool:
         """Get checkbox checked state"""
         return self.checkbox.isChecked()
     
-    def toggle(self):
+    def toggle(self) -> None:
         """Toggle checkbox state"""
         self.checkbox.toggle()
     
-    def setEnabled(self, enabled):
+    def setEnabled(self, enabled: bool) -> None:
         """Enable/disable the widget"""
         super().setEnabled(enabled)
         self.checkbox.setEnabled(enabled)
         self.label.setEnabled(enabled)
     
-    def checkStateChanged(self):
+    def checkStateChanged(self) -> 'QtCore.SignalInstance':
         """Access to the checkbox's checkStateChanged signal"""
         return self.stateChanged()
     
-    def stateChanged(self):
+    def stateChanged(self) -> 'QtCore.SignalInstance':
         """Access to the checkbox's stateChanged signal (for older Qt compatibility)"""
         return self.checkbox.stateChanged if hasattr(self.checkbox, 'stateChanged') else self.checkbox.checkStateChanged
     
-    def clicked(self):
+    def clicked(self) -> 'QtCore.SignalInstance':
         """Access to the checkbox's clicked signal"""
         return self.checkbox.clicked
     
-    def toggled(self):
+    def toggled(self) -> 'QtCore.SignalInstance':
         """Access to the checkbox's toggled signal"""
         return self.checkbox.toggled
 
 
 class CheckBoxHighlighter(QtWidgets.QCheckBox):
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
-    def focusInEvent(self, event):
+    def parent(self) -> WrappingCheckBox:
+        return typing.cast(WrappingCheckBox, super().parent())
+
+    def focusInEvent(self, event: QtGui.QFocusEvent) -> None:
         """Handle checkbox focus in from keyboard to highlight the parent widget"""
         super().focusInEvent(event)
-        if event.reason() not in (Qt.TabFocusReason, Qt.BacktabFocusReason):
+        if event.reason() not in (Qt.FocusReason.TabFocusReason, Qt.FocusReason.BacktabFocusReason):
             return
         if self.parent() and self.parent().autoFillBackground():
             palette = self.parent().palette()
             self.oldBgColor = palette.color(self.parent().backgroundRole())
-            highlightColor = palette.color(QtGui.QPalette.Highlight)
+            highlightColor = palette.color(QtGui.QPalette.ColorRole.Highlight)
             palette.setColor(self.parent().backgroundRole(), highlightColor)
             self.parent().setPalette(palette)
 
             palette = self.parent().label.palette()
             self.oldTextColor = palette.color(self.parent().label.foregroundRole())
-            highlightedTextColor = palette.color(QtGui.QPalette.HighlightedText)
+            highlightedTextColor = palette.color(QtGui.QPalette.ColorRole.HighlightedText)
             palette.setColor(self.parent().label.foregroundRole(), highlightedTextColor)
             self.parent().label.setPalette(palette)
 
-    def focusOutEvent(self, event):
+    def focusOutEvent(self, event: QtGui.QFocusEvent) -> None:
         """Handle checkbox focus out from keyboard to highlight the parent widget"""
         super().focusOutEvent(event)
         if hasattr(self, 'oldBgColor'):
@@ -123,33 +140,33 @@ class CheckBoxHighlighter(QtWidgets.QCheckBox):
 
 class WrappingLabel(QtWidgets.QLabel):
 
-    def __init__(self, text='', parent=None):
+    def __init__(self, text: str = '', parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__('', parent)
         self.setWordWrap(True)
         self.setMinimumWidth(10)
         self._text = self.preprocess_text(text)
 
-    def showEvent(self, event):
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
         self.reset_text()
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
         self.reset_text()
 
-    def setText(self, text):
+    def setText(self, text: str) -> None:
         self._text = self.preprocess_text(text)
         self.reset_text()
 
-    def setFont(self, font):
+    def setFont(self, font: QtGui.QFont | str | Sequence[str]) -> None:
         super().setFont(font)
         self._text = self.preprocess_text(''.join(self._text['words']))
         self.reset_text()
 
-    def reset_text(self):
+    def reset_text(self) -> None:
         super().setText(self.compose_text(self.width()))
 
-    def compose_text(self, availableWidth):
+    def compose_text(self, availableWidth: int | float) -> str:
         words = []
         for i, word in enumerate(self._text['words']):
             if availableWidth < self._text['lengths'][i]:
@@ -159,7 +176,7 @@ class WrappingLabel(QtWidgets.QLabel):
             words.append(next_word)
         return ''.join(words)
 
-    def preprocess_text(self, text):
+    def preprocess_text(self, text: str) -> ProcessedText:
         words = tokenize_text(text, QtCore.QTextBoundaryFinder.BoundaryType.Line)
         lengths = compute_words_length(words, self.font())
         breakable_words = []

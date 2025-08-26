@@ -17,8 +17,11 @@
 
 
 import sys
+from collections.abc import MutableMapping
 
 import regex as re
+from bookcontainer import BookContainer
+from preferences import JSONPrefs
 
 from plugin_utils import (
     PluginApplication, QtWidgets, QtCore, Qt, QtGui, iswindows
@@ -30,11 +33,15 @@ import utils
 
 class MainWindow(QtWidgets.QWidget):
 
-    def __init__(self, bk, prefs, parent=None):
+    def __init__(
+            self,
+            bk: BookContainer,
+            prefs: JSONPrefs,
+            parent: QtWidgets.QWidget | None = None) -> None:
         self.bk = bk
         self.prefs = prefs
-        self.undefined_attributes: dict[str, set[str]] = {}
-        self.check_undefined_attributes = {
+        self.undefined_attributes: core.AttributesToDelete
+        self.check_undefined_attributes: dict[str, dict[str, QtWidgets.QCheckBox]] = {
             'classes': {},
             'ids': {},
         }
@@ -55,7 +62,7 @@ class MainWindow(QtWidgets.QWidget):
         paned_window = QtWidgets.QSplitter()
 
         classes_area = QtWidgets.QScrollArea()
-        classes_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        classes_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         classes_area.setWidgetResizable(True)
         classes_area.setContentsMargins(0, 0, 0, 0)
         self.classes_frame_layout = QtWidgets.QVBoxLayout()
@@ -64,10 +71,10 @@ class MainWindow(QtWidgets.QWidget):
         classes_frame = QtWidgets.QWidget()
         classes_frame.setLayout(self.classes_frame_layout)
         classes_area.setWidget(classes_frame)
-        classes_area.setFocusPolicy(Qt.NoFocus)
+        classes_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         ids_area = QtWidgets.QScrollArea()
-        ids_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        ids_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         ids_area.setWidgetResizable(True)
         self.ids_frame_layout = QtWidgets.QVBoxLayout()
         self.ids_frame_layout.setSpacing(0)
@@ -75,7 +82,7 @@ class MainWindow(QtWidgets.QWidget):
         ids_frame = QtWidgets.QWidget()
         ids_frame.setLayout(self.ids_frame_layout)
         ids_area.setWidget(ids_frame)
-        ids_area.setFocusPolicy(Qt.NoFocus)
+        ids_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         paned_window.addWidget(classes_area)
         paned_window.addWidget(ids_area)
@@ -110,7 +117,7 @@ class MainWindow(QtWidgets.QWidget):
         self.show()
         self.ok_button.setFocus()
 
-    def set_geometry(self):
+    def set_geometry(self) -> None:
         self.setMinimumWidth(400)
         self.setMinimumHeight(300)
         screen = self.screen()
@@ -129,7 +136,7 @@ class MainWindow(QtWidgets.QWidget):
         top = screen_height // 2 - height // 2
         self.setGeometry(left, top, width, height)
 
-    def update_warning(self, event=None):
+    def update_warning(self, event: QtCore.QEvent | None = None) -> None:
         self.warning_label.setText(
             '{} files will be searched for classes and ids to remove. '
             'Open the Preferences pane to update this option.'.format(
@@ -137,29 +144,29 @@ class MainWindow(QtWidgets.QWidget):
             )
         )
 
-    def prefs_dlg(self, event=None):
-        w = PrefsDialog(self, self.bk, self.prefs)
+    def prefs_dlg(self, event: QtCore.QEvent | None = None) -> None:
+        w = PrefsDialog(self.bk, self.prefs, self)
         w.accepted.connect(self.update_warning)
         w.open()
 
-    def start_parsing(self, event=None):
+    def start_parsing(self, event: QtCore.QEvent | None = None) -> None:
         try:
             attributes_to_delete = core.find_attributes_to_delete(self.bk, self.prefs)
         except core.CSSParsingError as E:
             QtWidgets.QMessageBox(
-                QtWidgets.QMessageBox.Critical,
+                QtWidgets.QMessageBox.Icon.Critical,
                 'Error while parsing stylesheets',
                 f'{E}\nThe plugin will terminate.',
-                QtWidgets.QMessageBox.Ok,
+                QtWidgets.QMessageBox.StandardButton.Ok,
                 self
             ).exec()
             QtWidgets.QApplication.exit(2)
         except core.XMLParsingError as E:
             QtWidgets.QMessageBox(
-                QtWidgets.QMessageBox.Critical,
+                QtWidgets.QMessageBox.Icon.Critical,
                 'Error while parsing an XML or XHTML file',
                 f'{E}\nThe plugin will terminate.',
-                QtWidgets.QMessageBox.Ok,
+                QtWidgets.QMessageBox.StandardButton.Ok,
                 self
             ).exec()
             QtWidgets.QApplication.exit(2)
@@ -179,7 +186,7 @@ class MainWindow(QtWidgets.QWidget):
                 self.ok_button.clicked.disconnect()
             self.ok_button.clicked.connect(self.delete_selected_attributes)
 
-    def populate_text_widgets(self, attributes_list: dict):
+    def populate_text_widgets(self, attributes_list: core.AttributesToDelete) -> None:
         self.undefined_attributes = attributes_list
 
         margins_checkboxes = (8, 6, 8, 6)
@@ -196,15 +203,15 @@ class MainWindow(QtWidgets.QWidget):
 
         palette = classes_header.palette()
         bgColor = palette.color(classes_header.backgroundRole())
-        alternateBgColor = palette.color(QtGui.QPalette.AlternateBase)
+        alternateBgColor = palette.color(QtGui.QPalette.ColorRole.AlternateBase)
         if bgColor.getRgb() == alternateBgColor.getRgb():
-            alternateBgColor = palette.color(QtGui.QPalette.Base)
+            alternateBgColor = palette.color(QtGui.QPalette.ColorRole.Base)
         palette.setColor(classes_header.backgroundRole(), alternateBgColor)
         classes_header.setPalette(palette)
 
         classes_header_separator = QtWidgets.QFrame()
-        classes_header_separator.setFrameShape(QtWidgets.QFrame.HLine)
-        classes_header_separator.setFrameShadow(QtWidgets.QFrame.Sunken)
+        classes_header_separator.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        classes_header_separator.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
         self.classes_frame_layout.addWidget(classes_header_separator)
 
         if attributes_list['classes']:
@@ -230,8 +237,8 @@ class MainWindow(QtWidgets.QWidget):
             self.classes_frame_layout.addWidget(no_classes_label)
 
         classes_bottom_separator = QtWidgets.QFrame()
-        classes_bottom_separator.setFrameShape(QtWidgets.QFrame.HLine)
-        classes_bottom_separator.setFrameShadow(QtWidgets.QFrame.Raised)
+        classes_bottom_separator.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        classes_bottom_separator.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
         classes_bottom_separator.setLineWidth(0)
         classes_bottom_separator.setMidLineWidth(1)
         self.classes_frame_layout.addWidget(classes_bottom_separator)
@@ -252,8 +259,8 @@ class MainWindow(QtWidgets.QWidget):
         ids_header.setPalette(palette)
 
         ids_header_separator = QtWidgets.QFrame()
-        ids_header_separator.setFrameShape(QtWidgets.QFrame.HLine)
-        ids_header_separator.setFrameShadow(QtWidgets.QFrame.Sunken)
+        ids_header_separator.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        ids_header_separator.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
         self.ids_frame_layout.addWidget(ids_header_separator)
 
         if attributes_list['ids']:
@@ -279,8 +286,8 @@ class MainWindow(QtWidgets.QWidget):
             self.ids_frame_layout.addWidget(no_ids_label)
 
         ids_bottom_separator = QtWidgets.QFrame()
-        ids_bottom_separator.setFrameShape(QtWidgets.QFrame.HLine)
-        ids_bottom_separator.setFrameShadow(QtWidgets.QFrame.Raised)
+        ids_bottom_separator.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        ids_bottom_separator.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
         ids_bottom_separator.setLineWidth(0)
         ids_bottom_separator.setMidLineWidth(1)
         self.ids_frame_layout.addWidget(ids_bottom_separator)
@@ -305,21 +312,21 @@ class MainWindow(QtWidgets.QWidget):
             self.check_undefined_attributes[f'{attr_type}'][attr] = checkbox
             layout.addWidget(checkbox)
 
-    def toggle_all_classes(self, event=None):
+    def toggle_all_classes(self, event: QtCore.QEvent | None = None) -> None:
         checked = self.toggle_classes.isChecked()
         for class_, checkbox in self.check_undefined_attributes['classes'].items():
             checkbox.setChecked(checked)
 
-    def toggle_all_ids(self, event=None):
+    def toggle_all_ids(self, event: QtCore.QEvent | None = None) -> None:
         checked = self.toggle_ids.isChecked()
         for id_, checkbox in self.check_undefined_attributes['ids'].items():
             checkbox.setChecked(checked)
 
-    def delete_selected_attributes(self, event=None):
+    def delete_selected_attributes(self, event: QtCore.QEvent | None = None) -> None:
         for attr_type, attributes in self.check_undefined_attributes.items():
             for attribute, has_to_be_deleted in attributes.items():
                 if not has_to_be_deleted.isChecked():
-                    self.undefined_attributes[attr_type].discard(attribute)
+                    self.undefined_attributes[attr_type].discard(attribute)  # type: ignore[literal-required]
         try:
             core.delete_xhtml_attributes(self.bk, self.undefined_attributes, self.prefs)
         finally:
@@ -331,7 +338,11 @@ class MainWindow(QtWidgets.QWidget):
 
 class PrefsDialog(QtWidgets.QDialog):
 
-    def __init__(self, parent=None, bk=None, prefs=None):
+    def __init__(
+            self,
+            bk: BookContainer,
+            prefs: JSONPrefs,
+            parent: QtWidgets.QWidget | None = None):
         self.bk = bk
         self.prefs = prefs
 
@@ -351,8 +362,8 @@ class PrefsDialog(QtWidgets.QDialog):
         main_layout.addWidget(self.parse_only_selected_files)
 
         self.selected_files = QtWidgets.QListWidget()
-        self.selected_files.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.selected_files.addItems(href for id_, href in self.bk.text_iter())
+        self.selected_files.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.selected_files.addItems(href for id_, href in self.bk.text_iter())  # type: ignore[arg-type]
         main_layout.addWidget(self.selected_files, stretch=1)
 
         fragid_attrs_label = QtWidgets.QLabel(
@@ -387,7 +398,7 @@ class PrefsDialog(QtWidgets.QDialog):
         main_layout.addWidget(self.idref_list_attrs_edit)
 
         button_box = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.Ok|QtWidgets.QDialogButtonBox.Cancel
+            QtWidgets.QDialogButtonBox.StandardButton.Ok|QtWidgets.QDialogButtonBox.StandardButton.Cancel
         )
         button_box.accepted.connect(self.save_and_proceed)
         button_box.rejected.connect(self.reject)
@@ -395,7 +406,7 @@ class PrefsDialog(QtWidgets.QDialog):
 
         self.get_initial_values()
 
-    def get_initial_values(self):
+    def get_initial_values(self) -> None:
         if self.prefs.get('fragid_container_attrs'):
             self.fragid_attrs_edit.setText(', '.join(self.prefs['fragid_container_attrs']))
         else:
@@ -421,7 +432,7 @@ class PrefsDialog(QtWidgets.QDialog):
                 if item.text() in selected_files_names:
                     item.setSelected(True)
 
-    def save_and_proceed(self, event=None):
+    def save_and_proceed(self, event: QtCore.QEvent | None = None) -> None:
         attrs_names = {
             'fragid_container_attrs': self.fragid_attrs_edit.text(),
             'idref_container_attrs': self.idref_attrs_edit.text(),

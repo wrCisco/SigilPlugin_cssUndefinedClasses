@@ -20,11 +20,12 @@
 
 import html
 import urllib.parse
-from typing import MutableMapping
+from typing import MutableMapping, TypedDict
 
 import regex as re
 import sigil_bs4
 import sigil_gumbo_bs4_adapter as gumbo_bs4
+from bookcontainer import BookContainer
 
 try:
     import css_parser
@@ -32,6 +33,13 @@ except ImportError:
     import cssutils as css_parser
 
 import utils
+
+
+class AttributesToDelete(TypedDict):
+    classes: set[str]
+    ids: set[str]
+    info_classes: dict[str, dict[str, int]]
+    info_ids: dict[str, dict[str, int]]
 
 
 class CSSParsingError(Exception):
@@ -177,7 +185,7 @@ class CSSParser:
         else:
             self.ident_token = self.full_ident_token
 
-    def parse_css(self, bk, collector: CSSAttributes = None) -> CSSAttributes:
+    def parse_css(self, bk, collector: CSSAttributes | None = None) -> CSSAttributes:
         """
         Parse the contents of all css files in epub.
         """
@@ -193,7 +201,7 @@ class CSSParser:
                     self._parse_selector(selector.selectorText, collector)
         return collector
 
-    def parse_style(self, embedded_style: str, collector: CSSAttributes = None, filename: str = '') -> CSSAttributes:
+    def parse_style(self, embedded_style: str, collector: CSSAttributes | None = None, filename: str = '') -> CSSAttributes:
         """
         Parse the content of a style tag.
         """
@@ -268,7 +276,7 @@ class CSSParser:
                         end_pattern = re.compile(r"(?<!\\)'")
                     else:
                         end_pattern = re.compile(r'(?<!\\)]')
-                    value_end = end_pattern.search(fragment, pos=value_start).end()
+                    value_end = end_pattern.search(fragment, pos=value_start).end()  # type: ignore[union-attr]
                     value = utils.css_remove_escapes(fragment[value_start:value_end - 1])
                     if '~' in attr.group():
                         try:
@@ -374,7 +382,7 @@ def parse_xhtml(bk, cssparser: CSSParser, css_collector: CSSAttributes, prefs: M
                     a.class_names.add(class_)
             if classes:
                 try:
-                    literal_class_value = re.search(r'class=([\'"])(.+?)\1', str(elem)).group(2)
+                    literal_class_value = re.search(r'class=([\'"])(.+?)\1', str(elem)).group(2)  # type: ignore[union-attr]
                 except AttributeError:
                     pass
                 else:
@@ -450,7 +458,7 @@ def match_attribute_selectors(css_attributes: dict, xhtml_attribute_names: set) 
     return attrs_to_delete
 
 
-def find_attributes_to_delete(bk, prefs) -> dict:
+def find_attributes_to_delete(bk: BookContainer, prefs: MutableMapping) -> AttributesToDelete:
     # search for classes and ids in css
     my_cssparser = CSSParser()
     css_attrs = my_cssparser.parse_css(bk)
@@ -514,7 +522,7 @@ def find_attributes_to_delete(bk, prefs) -> dict:
     }
 
 
-def delete_xhtml_attributes(bk, attributes: dict, prefs: MutableMapping) -> None:
+def delete_xhtml_attributes(bk, attributes: AttributesToDelete, prefs: MutableMapping) -> None:
     for xhtml_id, xhtml_href in bk.text_iter():
         if prefs['parse_only_selected_files'] and xhtml_href not in prefs['selected_files']:
             continue

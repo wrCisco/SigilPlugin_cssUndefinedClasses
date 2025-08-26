@@ -19,6 +19,10 @@
 
 
 import sys
+from collections.abc import MutableMapping
+
+from bookcontainer import BookContainer
+from preferences import JSONPrefs
 
 from plugin_utils import (
     PluginApplication, QtWidgets, QtCore, Qt, QtGui, iswindows
@@ -30,7 +34,7 @@ import core
 PLUGIN_ICON = str(utils.SCRIPT_DIR / 'plugin.png')
 
 
-def get_prefs(bk):
+def get_prefs(bk: BookContainer) -> JSONPrefs:
     prefs = bk.getPrefs()
 
     prefs.defaults['parse_only_selected_files'] = False
@@ -52,7 +56,7 @@ def get_prefs(bk):
     return prefs
 
 
-def run(bk):
+def run(bk: BookContainer) -> int:
     prefs = get_prefs(bk)
     if prefs['quiet']:
         prefs['parse_only_selected_files'] = False
@@ -66,7 +70,7 @@ def run(bk):
     return 0 if success else 1
 
 
-def main():
+def main() -> int:
     print("I reached main when I should not have\n")
     return -1
 
