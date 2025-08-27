@@ -127,47 +127,65 @@ class WrappingLabel(QtWidgets.QLabel):
         super().__init__('', parent)
         self.setWordWrap(True)
         self.setMinimumWidth(10)
-        self._text = self.preprocess_text(text)
+        self._text = self._preprocess_text(text)
+        self._length_index = -1
 
     def showEvent(self, event):
         super().showEvent(event)
-        self.reset_text()
+        self._reset_text()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.reset_text()
+        self._reset_text()
 
     def setText(self, text):
-        self._text = self.preprocess_text(text)
-        self.reset_text()
+        self._text = self._preprocess_text(text)
+        self._length_index = -1
+        self._reset_text()
 
     def setFont(self, font):
         super().setFont(font)
-        self._text = self.preprocess_text(''.join(self._text['words']))
-        self.reset_text()
+        self._text = self._preprocess_text(''.join(self._text['words']))
+        self._length_index = -1
+        self._reset_text()
 
-    def reset_text(self):
-        super().setText(self.compose_text(self.width()))
+    def _update_length_index(self):
+        available_width = self.width() - 5
+        for i in range(len(self._text['sorted_lengths'])):
+            if self._text['sorted_lengths'][i] <= available_width <= self._text['sorted_lengths'][i + 1]:
+                self._length_index = i
+                break
 
-    def compose_text(self, availableWidth):
+    def _reset_text(self):
+        new_text = self._compose_text(self.width() - 5)
+        if new_text:
+            super().setText(new_text)
+
+    def _compose_text(self, available_width):
+        lengths, i = self._text['sorted_lengths'], self._length_index
+        if i != -1 and lengths[i] <= available_width <= lengths[i + 1]:
+            return
+        self._update_length_index()
         words = []
         for i, word in enumerate(self._text['words']):
-            if availableWidth < self._text['lengths'][i]:
+            if available_width < self._text['lengths'][i]:
                 next_word = self._text['breakable_words'][i]
             else:
                 next_word = word
             words.append(next_word)
         return ''.join(words)
 
-    def preprocess_text(self, text):
+    def _preprocess_text(self, text):
         words = tokenize_text(text, QtCore.QTextBoundaryFinder.BoundaryType.Line)
         lengths = compute_words_length(words, self.font())
         breakable_words = []
         for word in words:
             graphemes = tokenize_text(word, QtCore.QTextBoundaryFinder.BoundaryType.Grapheme)
             breakable_words.append('\u200B'.join(graphemes))
+        sorted_lengths = [0, *sorted(list(set(lengths))), 999999]
         return {
             'words': words,
             'breakable_words': breakable_words,
             'lengths': lengths,
+            'sorted_lengths': sorted_lengths,
         }
